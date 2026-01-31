@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { shopifyFetch } from '@/lib/shopify';
 
 export async function GET(request: NextRequest) {
   try {
     // 1. Check if Shopify is connected
-    const { data: settings } = await supabaseAdmin
-      .from('settings')
-      .select('shopify_access_token, shopify_shop')
+    const { data: shopifyConfig } = await supabaseAdmin
+      .from('shopify_config')
+      .select('shop_domain, access_token')
       .single();
 
-    if (!settings?.shopify_access_token) {
+    if (!shopifyConfig?.access_token) {
       return NextResponse.json({
         error: 'Shopify not connected',
         solution: 'Complete OAuth at /api/auth/shopify?shop=deliverly-4.myshopify.com'
@@ -18,12 +17,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Fetch orders from Shopify API
-    const ordersResponse = await shopifyFetch(
-      '/admin/api/2026-01/orders.json?status=any&limit=5',
+    const ordersResponse = await fetch(
+      `https://${shopifyConfig.shop_domain}/admin/api/2026-01/orders.json?status=any&limit=5`,
       {
         method: 'GET',
-        shop: settings.shopify_shop,
-        accessToken: settings.shopify_access_token,
+        headers: {
+          'X-Shopify-Access-Token': shopifyConfig.access_token,
+          'Content-Type': 'application/json',
+        },
       }
     );
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       shopifyConnected: true,
-      shopifyShop: settings.shopify_shop,
+      shopifyShop: shopifyConfig.shop_domain,
       shopifyOrderCount: shopifyOrders.orders?.length || 0,
       shopifyOrders: shopifyOrders.orders?.map((o: any) => ({
         id: o.id,
