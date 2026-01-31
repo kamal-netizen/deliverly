@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withCors, handleOptions } from '@/lib/cors';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 /**
  * Handle OPTIONS preflight
  */
@@ -21,10 +15,10 @@ export async function OPTIONS(request: NextRequest) {
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: orderId } = params;
+    const { id: orderId } = await params;
 
     // Verify order exists
     const { data: order, error: orderError } = await supabaseAdmin

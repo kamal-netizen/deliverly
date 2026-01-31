@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 /**
  * Get single order with full details and event history
  * GET /api/orders/:id
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const { data: order, error } = await supabaseAdmin
       .from('orders')

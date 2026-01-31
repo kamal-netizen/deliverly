@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-interface RouteParams {
-  params: {
-    code: string;
-  };
-}
-
 /**
  * Public order tracking by tracking code
  * GET /api/track/:code
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const { code } = params;
+    const { code } = await params;
 
     const { data: order, error } = await supabaseAdmin
       .from('orders')
