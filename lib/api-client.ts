@@ -82,7 +82,7 @@ class ApiClient {
 
   // Helper method for dispatch board
   async assignRider(orderId: string, riderId: string): Promise<void> {
-    return this.assignOrder({ order_id: orderId, rider_id: riderId })
+    return this.assignOrder({ orderId, riderId })
   }
 
   // Tracking
