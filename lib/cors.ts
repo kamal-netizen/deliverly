@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * CORS middleware for API routes
  */
-export function corsHeaders(origin: string | null) {
+export function corsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
