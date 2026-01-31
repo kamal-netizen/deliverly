@@ -147,7 +147,7 @@ export default function DashboardLayout({
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              if ('submenu' in item) {
+              if ('submenu' in item && item.submenu) {
                 const isExpanded = expandedMenus.includes(item.name)
                 const isActive = pathname?.startsWith('/dashboard/reports')
                 const Icon = item.icon
@@ -176,7 +176,7 @@ export default function DashboardLayout({
                       )}
                     </button>
                     
-                    {isExpanded && (
+                    {isExpanded && item.submenu && (
                       <div className="ml-8 mt-1 space-y-1">
                         {item.submenu.map((subItem) => {
                           const isSubActive = pathname === subItem.href
