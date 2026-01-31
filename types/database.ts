@@ -54,8 +54,6 @@ export interface Database {
           total_deliveries?: number;
           rating?: number;
         };
-      };
-        };
         Update: {
           id?: string;
           name?: string;
@@ -63,6 +61,11 @@ export interface Database {
           email?: string | null;
           active?: boolean;
           created_at?: string;
+          is_online?: boolean;
+          current_location?: { lat: number; lng: number } | null;
+          last_location_update?: string | null;
+          total_deliveries?: number;
+          rating?: number;
         };
       };
       orders: {
