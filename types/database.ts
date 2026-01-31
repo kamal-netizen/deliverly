@@ -35,6 +35,11 @@ export interface Database {
           email: string | null;
           active: boolean;
           created_at: string;
+          is_online: boolean;
+          current_location: { lat: number; lng: number } | null;
+          last_location_update: string | null;
+          total_deliveries: number;
+          rating: number;
         };
         Insert: {
           id?: string;
@@ -43,6 +48,13 @@ export interface Database {
           email?: string | null;
           active?: boolean;
           created_at?: string;
+          is_online?: boolean;
+          current_location?: { lat: number; lng: number } | null;
+          last_location_update?: string | null;
+          total_deliveries?: number;
+          rating?: number;
+        };
+      };
         };
         Update: {
           id?: string;
@@ -72,6 +84,10 @@ export interface Database {
           shopify_fulfillment_id: number | null;
           created_at: string;
           updated_at: string;
+          assigned_at: string | null;
+          priority: 'urgent' | 'high' | 'normal' | 'low';
+          estimated_delivery_time: string | null;
+          delivery_notes: string | null;
         };
         Insert: {
           id?: string;
@@ -91,6 +107,10 @@ export interface Database {
           shopify_fulfillment_id?: number | null;
           created_at?: string;
           updated_at?: string;
+          assigned_at?: string | null;
+          priority?: 'urgent' | 'high' | 'normal' | 'low';
+          estimated_delivery_time?: string | null;
+          delivery_notes?: string | null;
         };
         Update: {
           id?: string;
@@ -108,6 +128,14 @@ export interface Database {
           delivered_at?: string | null;
           fulfilled_at?: string | null;
           shopify_fulfillment_id?: number | null;
+          created_at?: string;
+          updated_at?: string;
+          assigned_at?: string | null;
+          priority?: 'urgent' | 'high' | 'normal' | 'low';
+          estimated_delivery_time?: string | null;
+          delivery_notes?: string | null;
+        };
+      };
           created_at?: string;
           updated_at?: string;
         };

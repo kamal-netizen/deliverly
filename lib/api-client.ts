@@ -1,30 +1,42 @@
 import { Order, Rider, AssignmentPayload, CreateRiderPayload } from '@/types'
+import toast from 'react-hot-toast'
 
 // Use relative API URLs since API and frontend are in same app
 const API_URL = '/api'
 
 class ApiClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    })
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      })
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error || 'API request failed')
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error || 'API request failed')
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error(`API Error [${endpoint}]:`, error)
+      toast.error(`Failed to ${options?.method || 'fetch'} data`)
+      throw error
     }
-
-    return response.json()
   }
 
   // Orders
   async getOrders(params?: { status?: string; rider_id?: string }): Promise<Order[]> {
-    const query = new URLSearchParams(params as any).toString()
-    return this.request<Order[]>(`/orders${query ? `?${query}` : ''}`)
+    try {
+      const query = new URLSearchParams(params as any).toString()
+      return await this.request<Order[]>(`/orders${query ? `?${query}` : ''}`)
+    } catch (error) {
+      console.error('Failed to fetch orders:', error)
+      return [] // Return empty array on error to prevent filter crashes
+    }
   }
 
   async getOrder(id: string): Promise<Order> {
@@ -46,7 +58,12 @@ class ApiClient {
 
   // Riders
   async getRiders(): Promise<Rider[]> {
-    return this.request<Rider[]>('/riders')
+    try {
+      return await this.request<Rider[]>('/riders')
+    } catch (error) {
+      console.error('Failed to fetch riders:', error)
+      return [] // Return empty array on error
+    }
   }
 
   async createRider(payload: CreateRiderPayload): Promise<Rider> {
@@ -61,6 +78,11 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(payload),
     })
+  }
+
+  // Helper method for dispatch board
+  async assignRider(orderId: string, riderId: string): Promise<void> {
+    return this.assignOrder({ order_id: orderId, rider_id: riderId })
   }
 
   // Tracking

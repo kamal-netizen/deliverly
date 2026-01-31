@@ -20,6 +20,10 @@ export interface Order {
   fulfilled_at: string | null;
   created_at: string;
   updated_at: string;
+  assigned_at?: string | null;
+  priority?: 'urgent' | 'high' | 'normal' | 'low';
+  estimated_delivery_time?: string | null;
+  delivery_notes?: string | null;
   riders?: Rider;
   delivery_events?: DeliveryEvent[];
 }
@@ -31,6 +35,11 @@ export interface Rider {
   email: string | null;
   active: boolean;
   created_at: string;
+  is_online?: boolean;
+  current_location?: { lat: number; lng: number } | null;
+  last_location_update?: string | null;
+  total_deliveries?: number;
+  rating?: number;
 }
 
 export interface DeliveryEvent {
