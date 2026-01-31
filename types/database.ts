@@ -139,10 +139,6 @@ export interface Database {
           delivery_notes?: string | null;
         };
       };
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       delivery_events: {
         Row: {
           id: string;
