@@ -30,11 +30,11 @@ export default function LoginPage() {
 
       if (error) throw error
 
-      alert('Login successful!')
+      // Redirect to dashboard immediately without alert
       router.push('/dashboard')
       router.refresh()
     } catch (error: any) {
-      alert(error.message || 'Failed to login')
+      alert(error.message || 'Invalid email or password. Please try again.')
     } finally {
       setLoading(false)
     }
