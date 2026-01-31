@@ -67,10 +67,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if rider has any assigned orders
     const { data: orders, error: ordersError } = await supabaseAdmin
