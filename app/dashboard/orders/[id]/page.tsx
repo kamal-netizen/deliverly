@@ -56,7 +56,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   }
 
   const lineItems = Array.isArray(order.line_items) ? order.line_items : []
-  const events = order.delivery_events || []
+  const events = Array.isArray(order.delivery_events) ? order.delivery_events : []
   const sortedEvents = [...events].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
