@@ -31,14 +31,22 @@ export function AssignRiderModal({
   const [selectedRiderId, setSelectedRiderId] = useState(currentRiderId || '')
   const queryClient = useQueryClient()
 
+  // Debug: Log props when component renders
+  console.log('AssignRiderModal props:', { orderId, currentRiderId, open })
+
   const { data: riders = [], isLoading } = useQuery({
     queryKey: ['riders'],
     queryFn: () => apiClient.getRiders(),
   })
 
   const assignMutation = useMutation({
-    mutationFn: (riderId: string) =>
-      apiClient.assignOrder({ orderId, riderId }),
+    mutationFn: async (riderId: string) => {
+      if (!orderId) {
+        throw new Error('Order ID is missing')
+      }
+      console.log('Assigning - orderId:', orderId, 'riderId:', riderId)
+      return apiClient.assignOrder({ orderId, riderId })
+    },
     onSuccess: () => {
       toast.success('Rider assigned successfully')
       queryClient.invalidateQueries({ queryKey: ['orders'] })
@@ -46,14 +54,21 @@ export function AssignRiderModal({
       onOpenChange(false)
     },
     onError: (error: any) => {
+      console.error('Assignment error:', error)
       toast.error(error.message || 'Failed to assign rider')
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('handleSubmit - orderId from props:', orderId)
+    console.log('handleSubmit - selectedRiderId:', selectedRiderId)
     if (!selectedRiderId) {
       toast.error('Please select a rider')
+      return
+    }
+    if (!orderId) {
+      toast.error('Order ID is missing')
       return
     }
     assignMutation.mutate(selectedRiderId)
