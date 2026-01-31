@@ -22,7 +22,9 @@ function DispatchContent() {
     queryKey: ['orders', 'unassigned'],
     queryFn: async () => {
       const allOrders = await apiClient.getOrders()
-      return allOrders.filter((order: Order) => order.status === 'pending')
+      return Array.isArray(allOrders) 
+        ? allOrders.filter((order: Order) => order.status === 'pending')
+        : []
     },
     refetchInterval: 5000, // Refresh every 5 seconds
   })
