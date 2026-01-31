@@ -16,9 +16,11 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('Assignment request body:', body);
     const { orderId, riderId } = body;
 
     if (!orderId || !riderId) {
+      console.error('Missing required fields:', { orderId, riderId, body });
       return NextResponse.json(
         { error: 'orderId and riderId required' },
         { status: 400 }
