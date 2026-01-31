@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { withCors, handleOptions } from '@/lib/cors';
 
 export async function OPTIONS(request: NextRequest) {
@@ -8,16 +8,14 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-
     // Check if Shopify credentials exist in database
-    const { data: settings, error } = await supabase
-      .from('settings')
-      .select('shopify_access_token, shopify_shop')
+    const { data: shopifyConfig, error } = await supabaseAdmin
+      .from('shopify_config')
+      .select('shop_domain, access_token')
       .single();
 
     if (error) {
-      // Settings table might not exist yet or no data
+      // Config table might not exist yet or no data
       return withCors(
         NextResponse.json({
           connected: false,
@@ -27,12 +25,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const isConnected = !!(settings?.shopify_access_token && settings?.shopify_shop);
+    const isConnected = !!(shopifyConfig?.access_token && shopifyConfig?.shop_domain);
 
     return withCors(
       NextResponse.json({
         connected: isConnected,
-        shop: isConnected ? settings.shopify_shop : null,
+        shop: isConnected ? shopifyConfig.shop_domain : null,
       }),
       request
     );
