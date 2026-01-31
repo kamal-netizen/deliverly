@@ -136,7 +136,9 @@ function DispatchContent() {
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        <span className="truncate">{order.customer_address || 'No address'}</span>
+                        <span className="truncate">
+                          {order.shipping_address?.address1 || order.shipping_address?.city || 'No address'}
+                        </span>
                       </div>
                       {order.created_at && (
                         <div className="flex items-center gap-2">
