@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     const { name, phone, email } = body;
 
     if (!name) {
-      return NextResponse.json({ error: 'Name required' }, { status: 400 });
+      const response = NextResponse.json({ error: 'Name required' }, { status: 400 });
+      return withCors(response, request);
     }
 
     const { data: rider, error } = await supabaseAdmin
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Error creating rider:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors(response, request);
   }
 }

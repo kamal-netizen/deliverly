@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withCors, handleOptions } from '@/lib/cors';
+
+/**
+ * Handle OPTIONS preflight
+ */
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions(request);
+}
 
 /**
  * Get single order with full details and event history
@@ -37,7 +45,8 @@ export async function GET(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        const response = NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        return withCors(response, request);
       }
       throw error;
     }
@@ -55,10 +64,12 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ order }, { status: 200 });
+    const response = NextResponse.json({ order }, { status: 200 });
+    return withCors(response, request);
 
   } catch (error: any) {
     console.error('Error fetching order:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors(response, request);
   }
 }

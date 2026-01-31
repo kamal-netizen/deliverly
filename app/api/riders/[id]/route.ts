@@ -32,10 +32,11 @@ export async function PATCH(
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'No valid fields to update' },
         { status: 400 }
       );
+      return withCors(response, request);
     }
 
     const { data: rider, error } = await supabaseAdmin
@@ -47,7 +48,8 @@ export async function PATCH(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Rider not found' }, { status: 404 });
+        const response = NextResponse.json({ error: 'Rider not found' }, { status: 404 });
+        return withCors(response, request);
       }
       throw error;
     }
@@ -57,7 +59,8 @@ export async function PATCH(
 
   } catch (error: any) {
     console.error('Error updating rider:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors(response, request);
   }
 }
 
@@ -84,10 +87,11 @@ export async function DELETE(
     }
 
     if (orders && orders.length > 0) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Cannot delete rider with active assignments' },
         { status: 400 }
       );
+      return withCors(response, request);
     }
 
     // Soft delete - deactivate the rider instead of deleting
@@ -100,7 +104,8 @@ export async function DELETE(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Rider not found' }, { status: 404 });
+        const response = NextResponse.json({ error: 'Rider not found' }, { status: 404 });
+        return withCors(response, request);
       }
       throw error;
     }
@@ -113,6 +118,7 @@ export async function DELETE(
 
   } catch (error: any) {
     console.error('Error deleting rider:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors(response, request);
   }
 }
