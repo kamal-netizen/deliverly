@@ -43,7 +43,8 @@ class ApiClient {
   }
 
   async getOrder(id: string): Promise<Order> {
-    return this.request<Order>(`/orders/${id}`)
+    const result = await this.request<{ order: Order } | Order>(`/orders/${id}`)
+    return (result as any)?.order ?? (result as Order)
   }
 
   async assignOrder(payload: AssignmentPayload): Promise<void> {

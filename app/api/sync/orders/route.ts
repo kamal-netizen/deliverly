@@ -62,11 +62,6 @@ export async function GET(request: NextRequest) {
           .eq('shopify_order_id', order.id)
           .single();
 
-        if (existing) {
-          skipped++;
-          continue;
-        }
-
         // Extract customer info
         const customer = order.customer || {};
         const shippingAddress = order.shipping_address || {};
@@ -83,9 +78,7 @@ export async function GET(request: NextRequest) {
           status = 'pending';
         }
 
-        // Insert order
-        const { error } = await supabaseAdmin.from('orders').insert({
-          id: crypto.randomUUID(),
+        const orderData = {
           shopify_order_id: order.id,
           order_number: order.name,
           customer_name: customerName,
@@ -104,10 +97,22 @@ export async function GET(request: NextRequest) {
           tags: order.tags ? order.tags.split(',').map((t: string) => t.trim()) : [],
           note: order.note,
           order_url: `https://${config.shop_domain}/admin/orders/${order.id}`,
-          tracking_code: nanoid(10),
-          status,
           created_at: order.created_at
-        });
+        };
+
+        const { error } = existing
+          ? await supabaseAdmin
+              .from('orders')
+              .update(orderData)
+              .eq('id', existing.id)
+          : await supabaseAdmin
+              .from('orders')
+              .insert({
+                id: crypto.randomUUID(),
+                tracking_code: nanoid(10),
+                status,
+                ...orderData
+              });
 
         if (error) {
           errors.push({ order_id: order.id, error: error.message });

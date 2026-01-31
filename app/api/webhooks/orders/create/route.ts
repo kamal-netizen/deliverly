@@ -74,6 +74,11 @@ export async function POST(request: NextRequest) {
 async function processOrderWebhook(payload: any) {
   const trackingCode = nanoid(10);
 
+  const { data: config } = await supabaseAdmin
+    .from('shopify_config')
+    .select('shop_domain')
+    .single();
+
   // Extract customer info
   const customer = payload.customer || {};
   const shippingAddress = payload.shipping_address || {};
@@ -81,6 +86,13 @@ async function processOrderWebhook(payload: any) {
   const customerName = customer.first_name && customer.last_name
     ? `${customer.first_name} ${customer.last_name}`
     : customer.first_name || customer.last_name || 'Unknown';
+
+  let status = 'pending';
+  if (payload.fulfillment_status === 'fulfilled') {
+    status = 'delivered';
+  } else if (payload.financial_status === 'paid') {
+    status = 'pending';
+  }
 
   // Insert order into database
   const { error } = await supabaseAdmin.from('orders').insert({
@@ -102,8 +114,12 @@ async function processOrderWebhook(payload: any) {
     payment_gateway_names: payload.payment_gateway_names || [],
     tags: payload.tags ? payload.tags.split(',').map((t: string) => t.trim()) : [],
     note: payload.note,
+    order_url: config?.shop_domain
+      ? `https://${config.shop_domain}/admin/orders/${payload.id}`
+      : null,
     tracking_code: trackingCode,
-    status: 'pending'
+    status,
+    created_at: payload.created_at
   });
 
   if (error) {
