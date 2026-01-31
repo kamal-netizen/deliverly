@@ -87,6 +87,7 @@ async function processCancellationWebhook(payload: any) {
   // Create cancellation event
   if (order.assigned_rider_id) {
     await supabaseAdmin.from('delivery_events').insert({
+      id: crypto.randomUUID(),
       order_id: order.id,
       rider_id: order.assigned_rider_id,
       event_type: 'cancelled',

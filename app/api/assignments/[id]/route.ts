@@ -47,6 +47,7 @@ export async function DELETE(
 
     // Create unassignment event
     await supabaseAdmin.from('delivery_events').insert({
+      id: crypto.randomUUID(),
       order_id: orderId,
       rider_id: order.assigned_rider_id,
       event_type: 'unassigned'

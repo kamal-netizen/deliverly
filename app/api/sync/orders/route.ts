@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
 
         // Insert order
         const { error } = await supabaseAdmin.from('orders').insert({
+          id: crypto.randomUUID(),
           shopify_order_id: order.id,
           order_number: order.name,
           customer_name: customerName,

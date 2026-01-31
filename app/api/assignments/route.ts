@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Create assignment event
     await supabaseAdmin.from('delivery_events').insert({
+      id: crypto.randomUUID(),
       order_id: orderId,
       rider_id: riderId,
       event_type: eventType

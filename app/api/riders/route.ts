@@ -47,9 +47,11 @@ export async function POST(request: NextRequest) {
       return withCors(response, request);
     }
 
+    // Generate UUID explicitly since Supabase might not have applied the default
     const { data: rider, error } = await supabaseAdmin
       .from('riders')
       .insert({
+        id: crypto.randomUUID(), // Explicitly generate UUID
         name,
         phone: phone || null,
         email: email || null,

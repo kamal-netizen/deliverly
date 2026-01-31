@@ -84,6 +84,7 @@ async function processOrderWebhook(payload: any) {
 
   // Insert order into database
   const { error } = await supabaseAdmin.from('orders').insert({
+    id: crypto.randomUUID(),
     shopify_order_id: payload.id,
     order_number: payload.name,
     customer_name: customerName,
