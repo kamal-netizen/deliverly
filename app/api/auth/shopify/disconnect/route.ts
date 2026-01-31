@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-server';
 import { corsHeaders, handleOptions } from '@/lib/cors';
 
 /**
@@ -16,15 +16,19 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get current Shopify config
-    const { data: config, error: fetchError } = await supabaseAdmin
+    const { data: configs, error: fetchError } = await supabaseAdmin
       .from('shopify_config')
-      .select('shop_domain, access_token')
-      .single();
+      .select('shop_domain, access_token');
 
     const origin = request.headers.get('origin');
     const headers = corsHeaders(origin);
 
-    if (fetchError || !config) {
+    if (fetchError) {
+      console.error('[Disconnect] Fetch error:', fetchError);
+      throw fetchError;
+    }
+
+    if (!configs || configs.length === 0) {
       // If no config exists, it's already disconnected - return success
       return NextResponse.json({ 
         success: true,
@@ -32,6 +36,8 @@ export async function POST(request: NextRequest) {
       }, { status: 200, headers });
     }
 
+    // Process first config (or all configs if multiple exist)
+    const config = configs[0];
     const { shop_domain, access_token } = config;
 
     // Delete all webhooks from Shopify
@@ -70,15 +76,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Clear Shopify config from database
+    // Clear ALL Shopify configs from database
     const { error: deleteError } = await supabaseAdmin
       .from('shopify_config')
       .delete()
-      .eq('shop_domain', shop_domain);
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
 
     if (deleteError) {
+      console.error('[Disconnect] Delete error:', deleteError);
       throw deleteError;
     }
+
+    console.log('[Disconnect] Successfully deleted all Shopify configs');
 
     return NextResponse.json({ 
       success: true, 

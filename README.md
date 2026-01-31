@@ -1,23 +1,27 @@
-# Deliverly - Shopify Delivery Management System
+# Deliverly - Delivery Management System
 
-Internal delivery management system for a single Shopify store.
+Internal delivery management system for Shopify stores. Complete full-stack application with dashboard and mobile app support.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- **Frontend**: Next.js 15 App Router, React, TypeScript
+- **UI**: Tailwind CSS, shadcn/ui, Radix UI
+- **Backend**: Next.js API Routes (serverless)
 - **Database**: Supabase (PostgreSQL)
 - **Storage**: Supabase Storage
+- **State Management**: TanStack Query
+- **API**: Shopify REST Admin API
 - **Deployment**: Vercel
-- **Mobile**: Android app (separate project)
 
 ## Features
 
-- Shopify order sync via webhooks
-- Office dashboard for order management
-- Rider assignment and tracking
-- Proof of delivery with photos
-- Automatic Shopify fulfillment
-- Public order tracking
+- **Order Management**: Automatic sync from Shopify, real-time tracking
+- **Rider Management**: Assign orders, track performance, manage availability
+- **Analytics Dashboard**: View stats, track deliveries, monitor performance
+- **Proof of Delivery**: Photo capture and delivery verification
+- **Shopify Integration**: Seamless two-way sync with fulfillment API
+- **Marketing Site**: Landing page, features, pricing, contact pages
+- **Mobile Responsive**: Works on all devices
 
 ## Setup
 

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from './providers';
+import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
   title: "Deliverly - Delivery Management",
-  description: "Internal delivery management system",
+  description: "Internal delivery management system for Shopify stores",
 };
 
 export default function RootLayout({
@@ -13,7 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>
+          {children}
+          <Toaster position="top-right" />
+        </Providers>
+      </body>
     </html>
   );
 }

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const apiKey = process.env.SHOPIFY_API_KEY!;
     const scopes = process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,write_fulfillments';
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/shopify/callback`;
+    const redirectUri = 'http://localhost:3000/api/auth/shopify/callback';
     const nonce = Math.random().toString(36).substring(7);
 
     // Build authorization URL
