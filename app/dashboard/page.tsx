@@ -18,8 +18,9 @@ import {
 import { StatusBadge } from '@/components/status-badge'
 import { Order } from '@/types'
 import toast from 'react-hot-toast'
+import { ErrorBoundary } from '@/components/error-boundary'
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [syncing, setSyncing] = useState(false)
 
   const { data: ordersData = [], isLoading, refetch: refetchOrders } = useQuery({
@@ -232,5 +233,13 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ErrorBoundary>
+      <DashboardContent />
+    </ErrorBoundary>
   )
 }

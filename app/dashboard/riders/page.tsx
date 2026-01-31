@@ -17,8 +17,9 @@ import { Badge } from '@/components/ui/badge'
 import { RiderModal } from '@/components/rider-modal'
 import { UserPlus, Phone, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ErrorBoundary } from '@/components/error-boundary'
 
-export default function RidersPage() {
+function RidersContent() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null)
   const queryClient = useQueryClient()
@@ -149,5 +150,13 @@ export default function RidersPage() {
         onOpenChange={setModalOpen}
       />
     </div>
+  )
+}
+
+export default function RidersPage() {
+  return (
+    <ErrorBoundary>
+      <RidersContent />
+    </ErrorBoundary>
   )
 }

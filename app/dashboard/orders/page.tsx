@@ -20,8 +20,9 @@ import { Search, UserPlus, Package, Download, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { ErrorBoundary } from '@/components/error-boundary'
 
-export default function OrdersPage() {
+function OrdersContent() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [syncing, setSyncing] = useState(false)
@@ -180,5 +181,13 @@ export default function OrdersPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function OrdersPage() {
+  return (
+    <ErrorBoundary>
+      <OrdersContent />
+    </ErrorBoundary>
   )
 }
