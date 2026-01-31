@@ -47,6 +47,7 @@ class ApiClient {
   }
 
   async assignOrder(payload: AssignmentPayload): Promise<void> {
+    console.log('assignOrder called with payload:', payload)
     return this.request<void>('/assignments', {
       method: 'POST',
       body: JSON.stringify(payload),

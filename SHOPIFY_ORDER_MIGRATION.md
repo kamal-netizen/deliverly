@@ -1,6 +1,16 @@
 # Apply Shopify Order Fields Migration
 
-Run this SQL in your Supabase SQL Editor:
+## Instructions
+
+1. Open Supabase SQL Editor: https://app.supabase.com
+2. **Copy ONLY the SQL code below** (from `ALTER TABLE` to the last `COMMENT ON`)
+3. Paste and run in SQL Editor
+
+⚠️ **Important**: Copy only the SQL commands, NOT the markdown formatting or code block markers!
+
+---
+
+## SQL Migration (Copy from here ↓)
 
 ```sql
 -- Add additional Shopify order fields for complete order information
