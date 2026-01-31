@@ -91,6 +91,16 @@ export interface Database {
           priority: 'urgent' | 'high' | 'normal' | 'low';
           estimated_delivery_time: string | null;
           delivery_notes: string | null;
+          financial_status: string | null;
+          fulfillment_status: string | null;
+          payment_gateway_names: string[] | null;
+          currency: string | null;
+          subtotal_price: number | null;
+          total_tax: number | null;
+          total_discounts: number | null;
+          tags: string[] | null;
+          note: string | null;
+          order_url: string | null;
         };
         Insert: {
           id?: string;
@@ -114,6 +124,16 @@ export interface Database {
           priority?: 'urgent' | 'high' | 'normal' | 'low';
           estimated_delivery_time?: string | null;
           delivery_notes?: string | null;
+          financial_status?: string | null;
+          fulfillment_status?: string | null;
+          payment_gateway_names?: string[] | null;
+          currency?: string | null;
+          subtotal_price?: number | null;
+          total_tax?: number | null;
+          total_discounts?: number | null;
+          tags?: string[] | null;
+          note?: string | null;
+          order_url?: string | null;
         };
         Update: {
           id?: string;
@@ -137,6 +157,16 @@ export interface Database {
           priority?: 'urgent' | 'high' | 'normal' | 'low';
           estimated_delivery_time?: string | null;
           delivery_notes?: string | null;
+          financial_status?: string | null;
+          fulfillment_status?: string | null;
+          payment_gateway_names?: string[] | null;
+          currency?: string | null;
+          subtotal_price?: number | null;
+          total_tax?: number | null;
+          total_discounts?: number | null;
+          tags?: string[] | null;
+          note?: string | null;
+          order_url?: string | null;
         };
       };
       delivery_events: {

@@ -93,6 +93,15 @@ async function processOrderWebhook(payload: any) {
     shipping_address: shippingAddress,
     line_items: payload.line_items,
     total_price: parseFloat(payload.total_price || '0'),
+    subtotal_price: parseFloat(payload.subtotal_price || '0'),
+    total_tax: parseFloat(payload.total_tax || '0'),
+    total_discounts: parseFloat(payload.total_discounts || '0'),
+    currency: payload.currency || 'AED',
+    financial_status: payload.financial_status,
+    fulfillment_status: payload.fulfillment_status,
+    payment_gateway_names: payload.payment_gateway_names || [],
+    tags: payload.tags ? payload.tags.split(',').map((t: string) => t.trim()) : [],
+    note: payload.note,
     tracking_code: trackingCode,
     status: 'pending'
   });

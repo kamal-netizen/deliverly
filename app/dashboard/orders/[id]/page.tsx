@@ -19,6 +19,10 @@ import {
   UserPlus,
   ExternalLink,
   Image as ImageIcon,
+  CreditCard,
+  DollarSign,
+  Tag,
+  FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -146,18 +150,134 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                       <p className="font-medium">{item.title || item.name}</p>
                       <p className="text-sm text-gray-500">
                         Quantity: {item.quantity}
+                        {item.sku && ` • SKU: ${item.sku}`}
+                        {item.variant_title && ` • ${item.variant_title}`}
                       </p>
                     </div>
                     <p className="font-medium">
-                      ${parseFloat(item.price).toFixed(2)}
+                      {order.currency || 'AED'} {parseFloat(item.price).toFixed(2)}
                     </p>
                   </div>
                 ))}
-                <div className="flex justify-between pt-3 border-t font-bold">
-                  <span>Total</span>
-                  <span>${parseFloat(String(order.total_price)).toFixed(2)}</span>
+                
+                {/* Order Totals */}
+                <div className="space-y-2 pt-3 border-t">
+                  {order.subtotal_price && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span>{order.currency || 'AED'} {parseFloat(String(order.subtotal_price)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {order.total_discounts && parseFloat(String(order.total_discounts)) > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discounts</span>
+                      <span>-{order.currency || 'AED'} {parseFloat(String(order.total_discounts)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {order.total_tax && parseFloat(String(order.total_tax)) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tax</span>
+                      <span>{order.currency || 'AED'} {parseFloat(String(order.total_tax)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t font-bold">
+                    <span>Total</span>
+                    <span>{order.currency || 'AED'} {parseFloat(String(order.total_price)).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment & Fulfillment Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment & Fulfillment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-start gap-3">
+                <DollarSign className="h-4 w-4 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-500">Payment Status</p>
+                  <Badge variant={
+                    order.financial_status === 'paid' ? 'default' : 
+                    order.financial_status === 'pending' ? 'secondary' : 
+                    'outline'
+                  }>
+                    {order.financial_status?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
+                  </Badge>
+                </div>
+              </div>
+              
+              {order.payment_gateway_names && order.payment_gateway_names.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <CreditCard className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Payment Method</p>
+                    <p className="font-medium">
+                      {order.payment_gateway_names.join(', ')}
+                      {order.payment_gateway_names.includes('Cash on Delivery (COD)') && 
+                        <Badge variant="outline" className="ml-2">COD</Badge>
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-3">
+                <Package className="h-4 w-4 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-500">Fulfillment Status</p>
+                  <Badge variant={
+                    order.fulfillment_status === 'fulfilled' ? 'default' : 
+                    order.fulfillment_status === 'partial' ? 'secondary' : 
+                    'outline'
+                  }>
+                    {order.fulfillment_status?.toUpperCase() || 'UNFULFILLED'}
+                  </Badge>
+                </div>
+              </div>
+
+              {order.note && (
+                <div className="flex items-start gap-3">
+                  <FileText className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Order Note</p>
+                    <p className="font-medium">{order.note}</p>
+                  </div>
+                </div>
+              )}
+
+              {order.tags && order.tags.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <Tag className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Tags</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {order.tags.map((tag: string, i: number) => (
+                        <Badge key={i} variant="outline">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {order.order_url && (
+                <div className="pt-2 border-t">
+                  <a
+                    href={order.order_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    View in Shopify Admin
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
             </CardContent>
           </Card>
 
