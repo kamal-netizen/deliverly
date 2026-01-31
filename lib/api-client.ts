@@ -32,7 +32,10 @@ class ApiClient {
   async getOrders(params?: { status?: string; rider_id?: string }): Promise<Order[]> {
     try {
       const query = new URLSearchParams(params as any).toString()
-      return await this.request<Order[]>(`/orders${query ? `?${query}` : ''}`)
+      const result = await this.request<{ orders: Order[] } | Order[]>(`/orders${query ? `?${query}` : ''}`)
+      // Handle both wrapped and direct array responses
+      const orders = Array.isArray(result) ? result : (result as any)?.orders
+      return Array.isArray(orders) ? orders : []
     } catch (error) {
       console.error('Failed to fetch orders:', error)
       return [] // Return empty array on error to prevent filter crashes
@@ -59,7 +62,10 @@ class ApiClient {
   // Riders
   async getRiders(): Promise<Rider[]> {
     try {
-      return await this.request<Rider[]>('/riders')
+      const result = await this.request<{ riders: Rider[] } | Rider[]>('/riders')
+      // Handle both wrapped and direct array responses
+      const riders = Array.isArray(result) ? result : (result as any)?.riders
+      return Array.isArray(riders) ? riders : []
     } catch (error) {
       console.error('Failed to fetch riders:', error)
       return [] // Return empty array on error
