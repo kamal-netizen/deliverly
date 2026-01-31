@@ -37,6 +37,15 @@ const statusConfig: Record<OrderStatus, { label: string; variant: 'default' | 's
 export function StatusBadge({ status }: { status: OrderStatus }) {
   const config = statusConfig[status]
   
+  // Handle invalid or undefined status
+  if (!config) {
+    return (
+      <Badge variant="secondary" className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+        Unknown
+      </Badge>
+    )
+  }
+  
   return (
     <Badge variant={config.variant} className={config.className}>
       {config.label}
