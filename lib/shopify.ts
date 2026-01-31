@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase-server';
 
 interface ShopifyConfig {
   shop_domain: string;

@@ -1,5 +1,5 @@
 import { createShopifyClient } from './shopify';
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase-server';
 
 interface FulfillmentResult {
   success: boolean;
