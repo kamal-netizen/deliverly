@@ -7,6 +7,7 @@ export function corsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
+    'https://deliverly-frontend.vercel.app',
     'https://deliverly-dashboard.vercel.app',
     process.env.NEXT_PUBLIC_APP_URL,
   ].filter(Boolean) as string[];
