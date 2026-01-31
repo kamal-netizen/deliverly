@@ -9,12 +9,12 @@ export function corsHeaders(origin: string | null) {
     'http://localhost:3001',
     'https://deliverly-dashboard.vercel.app',
     process.env.NEXT_PUBLIC_APP_URL,
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   const isAllowed = origin && allowedOrigins.includes(origin);
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Origin': isAllowed ? origin : (allowedOrigins[0] || '*'),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
