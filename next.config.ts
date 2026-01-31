@@ -1,7 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [
+      {
+        source: '/shopify/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors https://*.myshopify.com https://admin.shopify.com"
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'ALLOWALL'
+          }
+        ]
+      }
+    ];
+  }
 };
 
 export default nextConfig;

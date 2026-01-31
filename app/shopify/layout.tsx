@@ -5,14 +5,5 @@ export default function ShopifyLayout({
 }: {
   children: ReactNode
 }) {
-  return children
-}
-
-export async function generateMetadata() {
-  return {
-    other: {
-      'Content-Security-Policy': "frame-ancestors https://*.myshopify.com https://admin.shopify.com",
-      'X-Frame-Options': 'ALLOW-FROM https://admin.shopify.com'
-    }
-  }
+  return <div className="w-full h-full">{children}</div>
 }
