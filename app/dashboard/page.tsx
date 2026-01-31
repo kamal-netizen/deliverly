@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,18 +12,23 @@ import {
   CheckCircle,
   Truck,
   ArrowRight,
+  RefreshCw,
+  Download,
 } from 'lucide-react'
 import { StatusBadge } from '@/components/status-badge'
 import { Order } from '@/types'
+import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
-  const { data: ordersData = [], isLoading } = useQuery({
+  const [syncing, setSyncing] = useState(false)
+
+  const { data: ordersData = [], isLoading, refetch: refetchOrders } = useQuery({
     queryKey: ['orders'],
     queryFn: () => apiClient.getOrders(),
     refetchInterval: 30000,
   })
 
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: () => apiClient.getStats(),
     refetchInterval: 30000,
@@ -32,11 +38,52 @@ export default function DashboardPage() {
   const orders: Order[] = Array.isArray(ordersData) ? ordersData : (ordersData as any)?.orders || []
   const recentOrders: Order[] = orders.slice(0, 5)
 
+  const handleSyncOrders = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/sync/orders')
+      const result = await response.json()
+      
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(`Synced ${result.synced} orders, skipped ${result.skipped} duplicates`)
+        // Refetch orders and stats
+        refetchOrders()
+        refetchStats()
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sync orders')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of delivery operations</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-gray-500 mt-1">Overview of delivery operations</p>
+        </div>
+        <Button 
+          onClick={handleSyncOrders} 
+          disabled={syncing}
+          variant="outline"
+          className="gap-2"
+        >
+          {syncing ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Syncing...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Sync Orders from Shopify
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Stats Grid */}

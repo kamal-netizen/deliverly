@@ -16,13 +16,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/status-badge'
 import { format } from 'date-fns'
-import { Search, UserPlus, Package } from 'lucide-react'
+import { Search, UserPlus, Package, Download, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [syncing, setSyncing] = useState(false)
   const router = useRouter()
 
   const { data: ordersData = [], isLoading, refetch } = useQuery({
@@ -42,6 +44,25 @@ export default function OrdersPage() {
     return matchesSearch
   })
 
+  const handleSyncOrders = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/sync/orders')
+      const result = await response.json()
+      
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(`Synced ${result.synced} orders, skipped ${result.skipped} duplicates`)
+        refetch()
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sync orders')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -49,6 +70,25 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold">Orders</h1>
           <p className="text-gray-500 mt-1">Manage and track delivery orders</p>
         </div>
+        <Button 
+          onClick={handleSyncOrders} 
+          disabled={syncing}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          {syncing ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Syncing...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Sync from Shopify
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Filters */}
