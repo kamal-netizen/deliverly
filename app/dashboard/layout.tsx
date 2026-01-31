@@ -11,14 +11,40 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Truck,
+  Map,
+  Star,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  Plug
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dispatch', href: '/dashboard/dispatch', icon: Truck },
   { name: 'Orders', href: '/dashboard/orders', icon: Package },
-  { name: 'Riders', href: '/dashboard/riders', icon: Users },
+  { name: 'Drivers', href: '/dashboard/drivers', icon: Users },
+  { name: 'Map', href: '/dashboard/map', icon: Map },
+  { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
+  { 
+    name: 'Reports', 
+    icon: BarChart3,
+    submenu: [
+      { name: 'Sales', href: '/dashboard/reports/sales' },
+      { name: 'Drivers', href: '/dashboard/reports/drivers' },
+      { name: 'Performance', href: '/dashboard/reports/performance' },
+      { name: 'Extended', href: '/dashboard/reports/extended' },
+      { name: 'Analytics', href: '/dashboard/reports/analytics' },
+      { name: 'Heatmap', href: '/dashboard/reports/heatmap' },
+      { name: 'Third Party', href: '/dashboard/reports/third-party' },
+      { name: 'Refund', href: '/dashboard/reports/refund' },
+      { name: 'Customers', href: '/dashboard/reports/customers' },
+    ]
+  },
+  { name: 'Integrations', href: '/dashboard/integrations', icon: Plug },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
@@ -29,9 +55,18 @@ export default function DashboardLayout({
 }) {
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Reports'])
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+
+  const toggleSubmenu = (menuName: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(menuName) 
+        ? prev.filter(name => name !== menuName)
+        : [...prev, menuName]
+    )
+  }
 
   useEffect(() => {
     const checkUser = async () => {
@@ -110,10 +145,67 @@ export default function DashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
+          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+              if ('submenu' in item) {
+                const isExpanded = expandedMenus.includes(item.name)
+                const isActive = pathname?.startsWith('/dashboard/reports')
+                const Icon = item.icon
+                
+                return (
+                  <div key={item.name}>
+                    <button
+                      onClick={() => toggleSubmenu(item.name)}
+                      className={`
+                        w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium
+                        transition-colors
+                        ${isActive 
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-gray-700 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-5 w-5" />
+                        {item.name}
+                      </div>
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {item.submenu.map((subItem) => {
+                          const isSubActive = pathname === subItem.href
+                          return (
+                            <Link
+                              key={subItem.href}
+                              href={subItem.href}
+                              className={`
+                                block px-3 py-2 rounded-md text-sm
+                                transition-colors
+                                ${isSubActive 
+                                  ? 'bg-primary text-primary-foreground font-medium' 
+                                  : 'text-gray-600 hover:bg-gray-100'
+                                }
+                              `}
+                              onClick={() => setSidebarOpen(false)}
+                            >
+                              {subItem.name}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              
+              const Icon = item.icon!
+              const isActive = pathname === item.href || (pathname?.startsWith(item.href + '/') && item.href !== '/dashboard')
               
               return (
                 <Link
