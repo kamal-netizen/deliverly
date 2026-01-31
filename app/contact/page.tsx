@@ -36,7 +36,7 @@ export default function ContactPage() {
         <div className="text-center mb-16 max-w-3xl mx-auto">
           <h1 className="text-5xl font-bold mb-6">Get in Touch</h1>
           <p className="text-xl text-gray-600">
-            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </div>
 
@@ -52,7 +52,7 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">support@deliverly.com</p>
-                <p className="text-sm text-gray-500 mt-2">We'll respond within 24 hours</p>
+                <p className="text-sm text-gray-500 mt-2">We&apos;ll respond within 24 hours</p>
               </CardContent>
             </Card>
 

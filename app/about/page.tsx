@@ -60,7 +60,7 @@ export default function AboutPage() {
         <div className="text-center mb-20 max-w-3xl mx-auto">
           <h1 className="text-5xl font-bold mb-6">About Deliverly</h1>
           <p className="text-xl text-gray-600 leading-relaxed">
-            We're on a mission to simplify delivery management for e-commerce businesses worldwide. 
+            We&apos;re on a mission to simplify delivery management for e-commerce businesses worldwide. 
             Built by logistics experts who understand the challenges of last-mile delivery.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function AboutPage() {
                 connects seamlessly with Shopify and makes delivery management effortless.
               </p>
               <p>
-                Today, we're proud to serve over 500 businesses processing thousands of deliveries every day. 
+                Today, we&apos;re proud to serve over 500 businesses processing thousands of deliveries every day. 
                 Our platform has evolved based on real-world feedback from our users, and we continue to 
                 innovate and improve every single day.
               </p>
@@ -127,7 +127,7 @@ export default function AboutPage() {
         <div className="mb-20">
           <h2 className="text-3xl font-bold text-center mb-4">Meet Our Team</h2>
           <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-            We're a diverse team of engineers, designers, and logistics experts passionate about 
+            We&apos;re a diverse team of engineers, designers, and logistics experts passionate about 
             solving real problems for e-commerce businesses.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

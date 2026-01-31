@@ -82,7 +82,7 @@ export default function PricingPage() {
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold mb-4">Simple, transparent pricing</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Choose the plan that's right for your business. All plans include a 14-day free trial.
+            Choose the plan that&apos;s right for your business. All plans include a 14-day free trial.
           </p>
         </div>
 
@@ -166,13 +166,13 @@ export default function PricingPage() {
             <div>
               <h3 className="font-semibold mb-2">What happens after the free trial?</h3>
               <p className="text-gray-600">
-                Your trial lasts 14 days. After that, you'll be asked to choose a paid plan. No automatic charges.
+                Your trial lasts 14 days. After that, you&apos;ll be asked to choose a paid plan. No automatic charges.
               </p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Do you offer refunds?</h3>
               <p className="text-gray-600">
-                Yes, we offer a 30-day money-back guarantee if you're not satisfied with our service.
+                Yes, we offer a 30-day money-back guarantee if you&apos;re not satisfied with our service.
               </p>
             </div>
             <div>
