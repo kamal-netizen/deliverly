@@ -37,10 +37,10 @@ CREATE INDEX IF NOT EXISTS idx_assignment_history_rider ON assignment_history(ri
 CREATE OR REPLACE FUNCTION update_rider_stats()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.status = 'delivered' AND OLD.status != 'delivered' AND NEW.rider_id IS NOT NULL THEN
+  IF NEW.status = 'delivered' AND OLD.status != 'delivered' AND NEW.assigned_rider_id IS NOT NULL THEN
     UPDATE riders 
     SET total_deliveries = total_deliveries + 1
-    WHERE id = NEW.rider_id;
+    WHERE id = NEW.assigned_rider_id;
   END IF;
   RETURN NEW;
 END;
@@ -58,24 +58,24 @@ CREATE OR REPLACE FUNCTION track_assignment_history()
 RETURNS TRIGGER AS $$
 BEGIN
   -- On new assignment
-  IF NEW.rider_id IS NOT NULL AND OLD.rider_id IS NULL THEN
+  IF NEW.assigned_rider_id IS NOT NULL AND OLD.assigned_rider_id IS NULL THEN
     INSERT INTO assignment_history (order_id, rider_id, action, assigned_by)
-    VALUES (NEW.id, NEW.rider_id, 'assigned', auth.uid());
+    VALUES (NEW.id, NEW.assigned_rider_id, 'assigned', auth.uid());
     
     -- Update assigned_at timestamp
     NEW.assigned_at = now();
   
   -- On reassignment
-  ELSIF NEW.rider_id IS NOT NULL AND OLD.rider_id IS NOT NULL AND NEW.rider_id != OLD.rider_id THEN
+  ELSIF NEW.assigned_rider_id IS NOT NULL AND OLD.assigned_rider_id IS NOT NULL AND NEW.assigned_rider_id != OLD.assigned_rider_id THEN
     INSERT INTO assignment_history (order_id, rider_id, action, assigned_by)
-    VALUES (NEW.id, NEW.rider_id, 'reassigned', auth.uid());
+    VALUES (NEW.id, NEW.assigned_rider_id, 'reassigned', auth.uid());
     
     NEW.assigned_at = now();
   
   -- On unassignment
-  ELSIF NEW.rider_id IS NULL AND OLD.rider_id IS NOT NULL THEN
+  ELSIF NEW.assigned_rider_id IS NULL AND OLD.assigned_rider_id IS NOT NULL THEN
     INSERT INTO assignment_history (order_id, rider_id, action, assigned_by)
-    VALUES (NEW.id, OLD.rider_id, 'unassigned', auth.uid());
+    VALUES (NEW.id, OLD.assigned_rider_id, 'unassigned', auth.uid());
     
     NEW.assigned_at = NULL;
   END IF;
@@ -89,7 +89,7 @@ DROP TRIGGER IF EXISTS trigger_track_assignment_history ON orders;
 CREATE TRIGGER trigger_track_assignment_history
   BEFORE UPDATE ON orders
   FOR EACH ROW
-  WHEN (OLD.rider_id IS DISTINCT FROM NEW.rider_id)
+  WHEN (OLD.assigned_rider_id IS DISTINCT FROM NEW.assigned_rider_id)
   EXECUTE FUNCTION track_assignment_history();
 
 -- Add RLS policies for assignment_history
