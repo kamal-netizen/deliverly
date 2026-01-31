@@ -161,7 +161,10 @@ export default function OrdersPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(order.created_at), 'MMM d, yyyy')}
+                    {order.created_at 
+                      ? format(new Date(order.created_at), 'MMM d, yyyy')
+                      : '-'
+                    }
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Link href={`/dashboard/orders/${order.id}`}>

@@ -71,7 +71,10 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         <div className="flex-1">
           <h1 className="text-3xl font-bold">Order {order.order_number}</h1>
           <p className="text-gray-500 mt-1">
-            Created {format(new Date(order.created_at), 'MMM d, yyyy h:mm a')}
+            Created {order.created_at 
+              ? format(new Date(order.created_at), 'MMM d, yyyy h:mm a')
+              : 'Unknown'
+            }
           </p>
         </div>
         <StatusBadge status={order.status} />
@@ -190,7 +193,10 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                           {event.event_type.replace('_', ' ')}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {format(new Date(event.created_at), 'MMM d, yyyy h:mm a')}
+                          {event.created_at
+                            ? format(new Date(event.created_at), 'MMM d, yyyy h:mm a')
+                            : 'Unknown time'
+                          }
                         </p>
                         {event.notes && (
                           <p className="text-sm mt-1">{event.notes}</p>
