@@ -37,12 +37,12 @@ export default function OrdersPage() {
   // Handle both array and object response formats
   const orders: Order[] = Array.isArray(ordersData) ? ordersData : (ordersData as any)?.orders || []
 
-  const filteredOrders = orders.filter((order: Order) => {
+  const filteredOrders = Array.isArray(orders) ? orders.filter((order: Order) => {
     const matchesSearch =
-      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.order_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSearch
-  })
+  }) : []
 
   const handleSyncOrders = async () => {
     setSyncing(true)

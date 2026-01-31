@@ -26,7 +26,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Dispatch', href: '/dashboard/dispatch', icon: Truck },
   { name: 'Orders', href: '/dashboard/orders', icon: Package },
-  { name: 'Drivers', href: '/dashboard/drivers', icon: Users },
+  { name: 'Riders', href: '/dashboard/riders', icon: Users },
   { name: 'Map', href: '/dashboard/map', icon: Map },
   { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
   { 
