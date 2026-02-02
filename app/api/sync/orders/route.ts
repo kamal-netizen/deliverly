@@ -65,10 +65,21 @@ export async function GET(request: NextRequest) {
         // Extract customer info
         const customer = order.customer || {};
         const shippingAddress = order.shipping_address || {};
-        
-        const customerName = customer.first_name && customer.last_name
-          ? `${customer.first_name} ${customer.last_name}`
-          : customer.first_name || customer.last_name || 'Unknown';
+        const billingAddress = order.billing_address || {};
+
+        const nameFromAddress = (address: any) => {
+          if (!address) return '';
+          if (address.name) return address.name;
+          const parts = [address.first_name, address.last_name].filter(Boolean);
+          return parts.join(' ');
+        };
+
+        const customerName =
+          [customer.first_name, customer.last_name].filter(Boolean).join(' ') ||
+          nameFromAddress(shippingAddress) ||
+          nameFromAddress(billingAddress) ||
+          order.email ||
+          'Unknown';
 
         // Determine initial status based on Shopify fulfillment
         let status = 'pending';
@@ -82,8 +93,8 @@ export async function GET(request: NextRequest) {
           shopify_order_id: order.id,
           order_number: order.name,
           customer_name: customerName,
-          customer_phone: customer.phone || shippingAddress.phone,
-          customer_email: customer.email,
+          customer_phone: customer.phone || shippingAddress.phone || billingAddress.phone || null,
+          customer_email: customer.email || order.email || null,
           shipping_address: shippingAddress,
           line_items: order.line_items,
           total_price: parseFloat(order.total_price || '0'),

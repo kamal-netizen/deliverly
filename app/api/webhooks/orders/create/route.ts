@@ -82,10 +82,21 @@ async function processOrderWebhook(payload: any) {
   // Extract customer info
   const customer = payload.customer || {};
   const shippingAddress = payload.shipping_address || {};
-  
-  const customerName = customer.first_name && customer.last_name
-    ? `${customer.first_name} ${customer.last_name}`
-    : customer.first_name || customer.last_name || 'Unknown';
+  const billingAddress = payload.billing_address || {};
+
+  const nameFromAddress = (address: any) => {
+    if (!address) return '';
+    if (address.name) return address.name;
+    const parts = [address.first_name, address.last_name].filter(Boolean);
+    return parts.join(' ');
+  };
+
+  const customerName =
+    [customer.first_name, customer.last_name].filter(Boolean).join(' ') ||
+    nameFromAddress(shippingAddress) ||
+    nameFromAddress(billingAddress) ||
+    payload.email ||
+    'Unknown';
 
   let status = 'pending';
   if (payload.fulfillment_status === 'fulfilled') {
@@ -100,8 +111,8 @@ async function processOrderWebhook(payload: any) {
     shopify_order_id: payload.id,
     order_number: payload.name,
     customer_name: customerName,
-    customer_phone: customer.phone || shippingAddress.phone,
-    customer_email: customer.email,
+    customer_phone: customer.phone || shippingAddress.phone || billingAddress.phone || null,
+    customer_email: customer.email || payload.email || null,
     shipping_address: shippingAddress,
     line_items: payload.line_items,
     total_price: parseFloat(payload.total_price || '0'),
