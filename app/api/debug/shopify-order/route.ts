@@ -47,20 +47,32 @@ export async function GET(request: NextRequest) {
 
     // Fetch full customer details if customer ID exists
     let fullCustomer = null;
+    let customerFetchError = null;
     if (order.customer?.id) {
-      const customerResponse = await fetch(
-        `https://${config.shop_domain}/admin/api/2024-01/customers/${order.customer.id}.json`,
-        {
-          headers: {
-            'X-Shopify-Access-Token': config.access_token,
-            'Content-Type': 'application/json',
-          },
+      try {
+        const customerResponse = await fetch(
+          `https://${config.shop_domain}/admin/api/2024-01/customers/${order.customer.id}.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': config.access_token,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
+        if (customerResponse.ok) {
+          const { customer } = await customerResponse.json();
+          fullCustomer = customer;
+        } else {
+          const errorText = await customerResponse.text();
+          customerFetchError = {
+            status: customerResponse.status,
+            statusText: customerResponse.statusText,
+            error: errorText
+          };
         }
-      );
-      
-      if (customerResponse.ok) {
-        const { customer } = await customerResponse.json();
-        fullCustomer = customer;
+      } catch (err: any) {
+        customerFetchError = err.message;
       }
     }
 
@@ -76,6 +88,7 @@ export async function GET(request: NextRequest) {
       
       // Full customer fetched separately
       full_customer: fullCustomer,
+      customer_fetch_error: customerFetchError,
       
       // Email at order level
       order_email: order.email,
