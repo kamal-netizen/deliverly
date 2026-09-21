@@ -90,7 +90,7 @@ export function shopifyEnv() {
 
 /** Shopify Admin API version used for every call. */
 export function shopifyApiVersion(): string {
-  return optionalEnv('SHOPIFY_API_VERSION', '2025-07');
+  return optionalEnv('SHOPIFY_API_VERSION', '2026-01');
 }
 
 /** Public origin of this app, e.g. https://deliverly.example.com */
