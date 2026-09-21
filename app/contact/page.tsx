@@ -1,217 +1,220 @@
-'use client'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { ArrowUpRight, Mail } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Mail, Phone, MapPin, Send } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+export const metadata: Metadata = {
+  title: 'Contact',
+  description:
+    'One address, read by a person. Tell us about your store and your deliveries and you will get a real answer back.',
+}
+
+/**
+ * The single place to change the public address.
+ *
+ * Everything on this page routes here, so this constant is the only edit
+ * needed if the inbox moves.
+ */
+const CONTACT_EMAIL = 'deliverly@prismal.ae'
+
+/**
+ * Why there is no form here.
+ *
+ * The previous version had one, and its submit handler was a one-second
+ * setTimeout followed by a success toast. Nothing was ever sent anywhere. A
+ * visitor who used it was told their message had arrived when it had not —
+ * which is worse than having no contact page at all, because they stop waiting
+ * for a reply that was never coming.
+ *
+ * It also listed a phone number in the +1 (555) range and an invented San
+ * Francisco street address, alongside a live chat button wired to nothing and
+ * documentation links pointing at "#".
+ *
+ * A form that genuinely sends needs a mail provider and a delivery endpoint.
+ * Until that exists, an address a person reads is the honest version, and it
+ * is the one thing on this page that is certain to work.
+ */
+
+/**
+ * Prompts, not required fields. A first email containing these gets a useful
+ * reply instead of three rounds of clarification — and they happen to be
+ * exactly what a price is quoted from.
+ */
+const WORTH_MENTIONING = [
+  {
+    title: 'Roughly how many orders a month',
+    body: 'An order of magnitude is plenty. Nobody is holding you to it.',
+  },
+  {
+    title: 'How many riders are on the road',
+    body: 'On a normal day rather than at your busiest.',
+  },
+  {
+    title: 'How deliveries are handled today',
+    body: 'A spreadsheet and a group chat is a completely normal answer, and a useful one.',
+  },
+  {
+    title: 'Anything that has to work on day one',
+    body: 'If there is a hard requirement, it is better to find out now whether it is built.',
+  },
+] as const
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    toast.success('Message sent! We\'ll get back to you soon.')
-    setFormData({ name: '', email: '', subject: '', message: '' })
-    setIsSubmitting(false)
-  }
-
   return (
-    <div className="py-20">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-16 max-w-3xl mx-auto">
-          <h1 className="text-5xl font-bold mb-6">Get in Touch</h1>
-          <p className="text-xl text-gray-600">
-            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
-          </p>
-        </div>
+    <div className="min-h-dvh bg-paper text-ink">
+      <SiteHeader />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* Contact Information */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Email
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">support@deliverly.com</p>
-                <p className="text-sm text-gray-500 mt-2">We&apos;ll respond within 24 hours</p>
-              </CardContent>
-            </Card>
+      <main id="main">
+        {/* ---------------------------------------------------------------
+            Hero. The address is the page, so it is set as the largest thing
+            on it rather than tucked into a card in a sidebar.
+            --------------------------------------------------------------- */}
+        <section className="relative grain overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-40 -top-56 h-[38rem] w-[38rem] rounded-full opacity-[0.14] blur-3xl"
+            style={{
+              background:
+                'radial-gradient(circle, hsl(var(--ember)) 0%, transparent 65%)',
+            }}
+          />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Phone className="h-5 w-5" />
-                  Phone
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">+1 (555) 123-4567</p>
-                <p className="text-sm text-gray-500 mt-2">Mon-Fri 9am-6pm EST</p>
-              </CardContent>
-            </Card>
+          <div className="relative mx-auto max-w-6xl px-5 pb-20 pt-36 md:pb-24 md:pt-44">
+            <p className="figures text-xs uppercase tracking-[0.2em] text-ink-2">
+              Contact
+            </p>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Office
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  123 Delivery Street<br />
-                  San Francisco, CA 94102<br />
-                  United States
+            <h1 className="mt-6 max-w-[16ch] font-display text-[2.5rem] font-extrabold leading-[1.04] tracking-[-0.03em] sm:text-5xl lg:text-[3.5rem]">
+              One address. A person reads it.
+            </h1>
+
+            <p className="mt-7 max-w-[54ch] text-lg leading-relaxed text-ink-2">
+              No ticket number, no chat widget that turns into a ticket number.
+              Write, and you get an answer from someone who can actually tell you
+              whether this will work for your store.
+            </p>
+
+            {/* The mailto is the primary action on the page, so it is styled
+                as the primary action on the page. */}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="group mt-12 inline-flex max-w-full items-center gap-3 rounded-2xl border border-ink/[0.08] bg-paper-2/50 px-5 py-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink/[0.16] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember sm:gap-4 sm:px-8 sm:py-6"
+            >
+              <Mail
+                className="h-5 w-5 shrink-0 text-ember sm:h-6 sm:w-6"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              {/* break-words rather than break-all: if it has to wrap on a
+                  narrow phone it should break at the @ or a dot, not halfway
+                  through the domain. */}
+              <span className="figures min-w-0 break-words text-base font-medium sm:text-2xl">
+                {CONTACT_EMAIL}
+              </span>
+              <ArrowUpRight
+                className="h-5 w-5 shrink-0 text-ink-2/40 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ember"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            </a>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------
+            What to say
+            --------------------------------------------------------------- */}
+        <section className="border-t border-ink/[0.07] bg-paper-2/60">
+          <div className="mx-auto grid max-w-6xl gap-12 px-5 py-24 md:py-28 lg:grid-cols-12 lg:gap-16">
+            <div className="lg:col-span-4">
+              <div className="lg:sticky lg:top-28">
+                <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                  Worth mentioning
+                </h2>
+                <p className="mt-4 max-w-[38ch] leading-relaxed text-ink-2">
+                  None of it is required. It just saves a round trip, and it is
+                  what a price gets worked out from.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* FAQs Link */}
-            <Card className="bg-primary text-white">
-              <CardHeader>
-                <CardTitle>Quick Questions?</CardTitle>
-                <CardDescription className="text-white/80">
-                  Check out our FAQ section for instant answers to common questions.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="secondary" size="sm" asChild>
-                  <a href="/pricing#faq">View FAQs</a>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Contact Form */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Send us a message</CardTitle>
-              <CardDescription>
-                Fill out the form below and our team will get back to you within 24 hours.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ul className="lg:col-span-8">
+              {WORTH_MENTIONING.map(({ title, body }, index) => (
+                <li
+                  key={title}
+                  className="flex gap-6 border-t border-ink/[0.07] py-6 first:border-t-0 first:pt-0"
+                >
+                  <span className="figures pt-0.5 text-sm text-ink-2/50">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium mb-2">
-                      Name *
-                    </label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="John Doe"
-                      required
-                    />
+                    <h3 className="font-display font-semibold tracking-tight">
+                      {title}
+                    </h3>
+                    <p className="mt-1.5 max-w-[54ch] leading-relaxed text-ink-2">
+                      {body}
+                    </p>
                   </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium mb-2">
-                      Email *
-                    </label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="john@example.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium mb-2">
-                    Subject *
-                  </label>
-                  <Input
-                    id="subject"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="How can we help?"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium mb-2">
-                    Message *
-                  </label>
-                  <Textarea
-                    id="message"
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Tell us more about your inquiry..."
-                    rows={6}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    'Sending...'
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Message
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Support Options */}
-        <div className="mt-20 bg-gray-50 rounded-2xl p-12 text-center">
-          <h2 className="text-3xl font-bold mb-4">Other Ways to Get Help</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">📚</div>
-              <h3 className="font-semibold mb-2">Documentation</h3>
-              <p className="text-sm text-gray-600 mb-4">Browse our comprehensive guides</p>
-              <Button variant="outline" size="sm" asChild>
-                <a href="#">View Docs</a>
-              </Button>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">💬</div>
-              <h3 className="font-semibold mb-2">Live Chat</h3>
-              <p className="text-sm text-gray-600 mb-4">Chat with our support team</p>
-              <Button variant="outline" size="sm">
-                Start Chat
-              </Button>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">🎥</div>
-              <h3 className="font-semibold mb-2">Video Tutorials</h3>
-              <p className="text-sm text-gray-600 mb-4">Learn with step-by-step videos</p>
-              <Button variant="outline" size="sm" asChild>
-                <a href="#">Watch Videos</a>
-              </Button>
-            </div>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      </div>
+        </section>
+
+        {/* ---------------------------------------------------------------
+            Meanwhile. Two real destinations rather than the previous row of
+            documentation, live chat and video tutorials, none of which
+            existed or went anywhere.
+            --------------------------------------------------------------- */}
+        <section className="mx-auto max-w-6xl px-5 py-24 md:py-28">
+          <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+            While you wait for a reply
+          </h2>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <Link
+              href="/features"
+              className="group rounded-2xl border border-ink/[0.08] bg-paper-2/50 p-8 transition-all duration-300 hover:-translate-y-0.5 hover:border-ink/[0.16] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  What it does
+                </h3>
+                <ArrowUpRight
+                  className="h-5 w-5 shrink-0 text-ink-2/40 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ember"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </div>
+              <p className="mt-3 max-w-[44ch] leading-relaxed text-ink-2">
+                The dashboard, the rider app and the customer&rsquo;s tracking
+                link, feature by feature — including what is not built.
+              </p>
+            </Link>
+
+            <Link
+              href="/pricing"
+              className="group rounded-2xl border border-ink/[0.08] bg-paper-2/50 p-8 transition-all duration-300 hover:-translate-y-0.5 hover:border-ink/[0.16] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  What it costs
+                </h3>
+                <ArrowUpRight
+                  className="h-5 w-5 shrink-0 text-ink-2/40 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ember"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </div>
+              <p className="mt-3 max-w-[44ch] leading-relaxed text-ink-2">
+                How pricing is worked out, and the two numbers it depends on.
+              </p>
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      <SiteFooter />
     </div>
   )
 }

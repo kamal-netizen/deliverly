@@ -1,217 +1,323 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Package, 
-  Users, 
-  TrendingUp, 
-  Shield, 
-  Zap, 
-  CheckCircle,
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import {
+  ArrowRight,
+  Camera,
   Clock,
+  KeyRound,
+  Link2,
+  ListChecks,
   MapPin,
-  Smartphone,
-  BarChart3,
-  Bell,
-  Lock
+  PackageCheck,
+  RefreshCw,
+  Repeat,
+  Route,
+  ShieldCheck,
+  Signal,
 } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 
-const features = [
+export const metadata: Metadata = {
+  title: 'Features',
+  description:
+    'What Deliverly does: webhook order sync, a dispatch queue, an offline-tolerant rider app, proof of delivery, and fulfilment back to Shopify exactly once.',
+}
+
+/**
+ * The product has three faces, not twelve features.
+ *
+ * The previous version of this page was a grid of twelve equal cards, which
+ * flattens everything to the same weight and says nothing about who uses what.
+ * Deliverly is used by three different people at three different moments —
+ * dispatch at a desk, a rider on a doorstep, a customer refreshing a link —
+ * and the page is organised that way instead.
+ *
+ * Every line below is something the code in this repository actually does.
+ * Signatures, SMS, push notifications and notification rules were listed here
+ * before and are not built, so they are not listed here now.
+ */
+const SURFACES = [
   {
-    icon: Package,
-    title: 'Order Management',
-    description: 'Centralized dashboard to view, filter, and manage all your delivery orders. Sync automatically from Shopify with real-time updates.',
-    benefits: [
-      'Auto-sync with Shopify',
-      'Advanced filtering and search',
-      'Bulk operations',
-      'Order status tracking'
-    ]
+    eyebrow: 'For dispatch',
+    title: 'The dashboard',
+    body: 'Where the day is run from. Orders land on their own and leave assigned.',
+    items: [
+      {
+        icon: RefreshCw,
+        title: 'Orders arrive by webhook',
+        body: 'Shopify calls the moment an order is paid for. Nothing polls, and nobody presses import.',
+      },
+      {
+        icon: ListChecks,
+        title: 'One queue for the unassigned',
+        body: 'Everything waiting for a rider collects in a single place, so the backlog is a list rather than a feeling.',
+      },
+      {
+        icon: Route,
+        title: 'Assign and reassign',
+        body: 'Give a stop to a rider, or move it. The change reaches their phone without them refreshing anything.',
+      },
+      {
+        icon: MapPin,
+        title: 'Where the riders are',
+        body: 'Positions on a map while riders are on shift, with anything stale marked stale rather than drawn as current.',
+      },
+      {
+        icon: Clock,
+        title: 'Counts that respect the clock',
+        body: 'Today’s numbers use the store’s timezone, so a 1am order counts as tonight and not as yesterday.',
+      },
+    ],
   },
   {
-    icon: Users,
-    title: 'Rider Management',
-    description: 'Manage your delivery team efficiently with rider profiles, availability tracking, and performance metrics.',
-    benefits: [
-      'Rider profiles and contact info',
-      'Availability management',
-      'Performance tracking',
-      'Active/inactive status'
-    ]
+    eyebrow: 'For riders',
+    title: 'The phone',
+    body: 'The half of the job that happens where the signal does not reach.',
+    items: [
+      {
+        icon: ListChecks,
+        title: 'The stops for this shift',
+        body: 'A rider sees their own assigned work and nothing else.',
+      },
+      {
+        icon: Camera,
+        title: 'Proof at the door',
+        body: 'A photo and a GPS stamp recorded at the doorstep, stored against the delivery.',
+      },
+      {
+        icon: PackageCheck,
+        title: 'Delivered, or why not',
+        body: 'A failed attempt is a first-class outcome with a reason attached, not a stop that silently stays open.',
+      },
+      {
+        icon: Signal,
+        title: 'Written before the network',
+        body: 'The delivery is saved to the phone first and sent when there is something to send it over. A basement does not lose it.',
+      },
+      {
+        icon: Repeat,
+        title: 'Submitting twice is safe',
+        body: 'A request that times out but actually arrived is recognised as the same delivery. It is never counted, or fulfilled, twice.',
+      },
+    ],
   },
   {
-    icon: Zap,
-    title: 'Smart Assignment',
-    description: 'Quickly assign orders to riders with intelligent recommendations based on location, availability, and workload.',
-    benefits: [
-      'One-click assignment',
-      'Smart recommendations',
-      'Reassignment capability',
-      'Load balancing'
-    ]
+    eyebrow: 'For customers',
+    title: 'The tracking link',
+    body: 'One page, no account, nothing to install.',
+    items: [
+      {
+        icon: Link2,
+        title: 'A code, not a login',
+        body: 'The customer opens a link and sees their order. There is no password to forget.',
+      },
+      {
+        icon: Clock,
+        title: 'What happened, and when',
+        body: 'Received, assigned, out for delivery, delivered — with the times, as they occurred.',
+      },
+      {
+        icon: Camera,
+        title: 'The proof photo',
+        body: 'Served through a signed URL that expires, so the image is not left sitting on a public address forever.',
+      },
+    ],
+  },
+] as const
+
+/**
+ * The guarantees, stated as guarantees.
+ *
+ * These are the parts that took the real work, and they are invisible on a
+ * feature grid: they are all about what happens when something goes wrong.
+ */
+const GUARANTEES = [
+  {
+    icon: PackageCheck,
+    title: 'Fulfilled exactly once',
+    body: 'Shopify is told a parcel arrived one time, even when the same delivery is submitted three times from a patchy connection.',
   },
   {
-    icon: MapPin,
-    title: 'Real-time Tracking',
-    description: 'Track deliveries in real-time with GPS location updates and estimated delivery times.',
-    benefits: [
-      'Live GPS tracking',
-      'Delivery timeline',
-      'Status notifications',
-      'Customer tracking page'
-    ]
+    icon: KeyRound,
+    title: 'Riders and staff are separated',
+    body: 'Roles live in metadata only the service role can write, and an unrecognised role is denied rather than assumed to be staff.',
   },
   {
-    icon: Shield,
-    title: 'Proof of Delivery',
-    description: 'Capture photo evidence and signatures on delivery for complete accountability and dispute resolution.',
-    benefits: [
-      'Photo capture',
-      'Digital signatures',
-      'Timestamp verification',
-      'Secure storage'
-    ]
+    icon: ShieldCheck,
+    title: 'Webhooks are verified',
+    body: 'Every payload Shopify sends is checked against its HMAC signature before it is allowed to change anything.',
   },
   {
-    icon: BarChart3,
-    title: 'Analytics & Reports',
-    description: 'Comprehensive analytics dashboard with insights into delivery performance, rider efficiency, and customer satisfaction.',
-    benefits: [
-      'Performance metrics',
-      'Delivery time analysis',
-      'Rider efficiency reports',
-      'Custom date ranges'
-    ]
+    icon: RefreshCw,
+    title: 'Sync survives a real catalogue',
+    body: 'First sync was built and corrected against a store with thirteen thousand orders, not against a test fixture with five.',
   },
-  {
-    icon: Bell,
-    title: 'Notifications',
-    description: 'Stay informed with real-time notifications for order updates, delivery status changes, and important events.',
-    benefits: [
-      'Email notifications',
-      'SMS alerts (Pro)',
-      'Push notifications',
-      'Custom notification rules'
-    ]
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile Responsive',
-    description: 'Access your dashboard from any device with our fully responsive design optimized for mobile and tablet.',
-    benefits: [
-      'Mobile-first design',
-      'Touch-optimized interface',
-      'Works offline',
-      'Cross-platform'
-    ]
-  },
-  {
-    icon: CheckCircle,
-    title: 'Shopify Integration',
-    description: 'Seamless two-way integration with Shopify. Orders sync automatically and fulfillment updates reflect in both systems.',
-    benefits: [
-      'Auto order sync',
-      'Fulfillment updates',
-      'Customer data sync',
-      'Easy OAuth setup'
-    ]
-  },
-  {
-    icon: Lock,
-    title: 'Security & Privacy',
-    description: 'Enterprise-grade security with data encryption, role-based access control, and compliance with privacy regulations.',
-    benefits: [
-      'Data encryption',
-      'Role-based access',
-      'GDPR compliant',
-      'Regular backups'
-    ]
-  },
-  {
-    icon: Clock,
-    title: 'Delivery Events',
-    description: 'Complete delivery history with detailed event logs showing every action taken from assignment to completion.',
-    benefits: [
-      'Event timeline',
-      'Action history',
-      'Rider assignments',
-      'Status changes'
-    ]
-  },
-  {
-    icon: TrendingUp,
-    title: 'Scalability',
-    description: 'Built to grow with your business. Handle thousands of orders per month without compromising performance.',
-    benefits: [
-      'Unlimited growth',
-      'Fast performance',
-      'Auto-scaling',
-      'High availability'
-    ]
-  }
-]
+] as const
 
 export default function FeaturesPage() {
   return (
-    <div className="py-20">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-16 max-w-3xl mx-auto">
-          <h1 className="text-5xl font-bold mb-6">Powerful features for modern delivery management</h1>
-          <p className="text-xl text-gray-600">
-            Everything you need to run a successful delivery operation, from order management to proof of delivery.
-          </p>
-        </div>
+    <div className="min-h-dvh bg-paper text-ink">
+      <SiteHeader />
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
-          {features.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <Card key={feature.title} className="border-2 hover:border-primary transition-all hover:shadow-lg">
-                <CardHeader>
-                  <Icon className="h-12 w-12 text-primary mb-4" />
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">{feature.description}</p>
-                  <ul className="space-y-2">
-                    {feature.benefits.map((benefit) => (
-                      <li key={benefit} className="flex items-start gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        <span>{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+      <main id="main">
+        {/* ---------------------------------------------------------------
+            Hero
+            --------------------------------------------------------------- */}
+        <section className="relative grain overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-40 -top-56 h-[38rem] w-[38rem] rounded-full opacity-[0.14] blur-3xl"
+            style={{
+              background:
+                'radial-gradient(circle, hsl(var(--ember)) 0%, transparent 65%)',
+            }}
+          />
 
-        {/* Integration Section */}
-        <div className="bg-gray-50 rounded-2xl p-12 text-center">
-          <h2 className="text-3xl font-bold mb-4">Seamless Shopify Integration</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-            Connect your Shopify store in seconds and start managing deliveries right away. No technical knowledge required.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">⚡</div>
-              <h3 className="font-semibold mb-2">Quick Setup</h3>
-              <p className="text-sm text-gray-600">Connect in under 2 minutes</p>
+          <div className="relative mx-auto max-w-6xl px-5 pb-20 pt-36 md:pb-24 md:pt-44">
+            <p className="figures text-xs uppercase tracking-[0.2em] text-ink-2">
+              Features
+            </p>
+
+            <h1 className="mt-6 max-w-[18ch] font-display text-[2.5rem] font-extrabold leading-[1.04] tracking-[-0.03em] sm:text-5xl lg:text-[3.5rem]">
+              Three people use this. They need different things.
+            </h1>
+
+            <p className="mt-7 max-w-[58ch] text-lg leading-relaxed text-ink-2">
+              Dispatch needs to see the whole day at once. A rider needs one stop
+              and a camera. A customer needs a link that works. Below is what
+              each of them actually gets.
+            </p>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------
+            The three surfaces. Each keeps a sticky label beside its own list,
+            so the reader always knows whose view they are reading.
+            --------------------------------------------------------------- */}
+        {SURFACES.map((surface, index) => (
+          <section
+            key={surface.title}
+            className={
+              index % 2 === 1 ? 'border-y border-ink/[0.07] bg-paper-2/60' : ''
+            }
+          >
+            <div className="mx-auto grid max-w-6xl gap-12 px-5 py-20 md:py-24 lg:grid-cols-12 lg:gap-16">
+              <div className="lg:col-span-4">
+                <div className="lg:sticky lg:top-28">
+                  <p className="figures text-xs uppercase tracking-[0.2em] text-ember">
+                    {surface.eyebrow}
+                  </p>
+                  <h2 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                    {surface.title}
+                  </h2>
+                  <p className="mt-4 max-w-[38ch] leading-relaxed text-ink-2">
+                    {surface.body}
+                  </p>
+                </div>
+              </div>
+
+              <ul className="lg:col-span-8">
+                {surface.items.map(({ icon: Icon, title, body }) => (
+                  <li
+                    key={title}
+                    className="group flex gap-5 border-t border-ink/[0.07] py-6 first:border-t-0 first:pt-0"
+                  >
+                    <Icon
+                      className="mt-0.5 h-5 w-5 shrink-0 text-ink-2/40 transition-colors duration-300 group-hover:text-ember"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    <div>
+                      <h3 className="font-display font-semibold tracking-tight">
+                        {title}
+                      </h3>
+                      <p className="mt-1.5 max-w-[56ch] leading-relaxed text-ink-2">
+                        {body}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">🔄</div>
-              <h3 className="font-semibold mb-2">Real-time Sync</h3>
-              <p className="text-sm text-gray-600">Orders update automatically</p>
+          </section>
+        ))}
+
+        {/* ---------------------------------------------------------------
+            Guarantees. A dark band, because these are a different kind of
+            claim from the feature lists above and should not read as more
+            of them.
+            --------------------------------------------------------------- */}
+        <section className="relative grain bg-ink text-paper">
+          <div className="mx-auto max-w-6xl px-5 py-24 md:py-28">
+            <div className="max-w-2xl">
+              <p className="figures text-xs uppercase tracking-[0.2em] text-paper/40">
+                Underneath
+              </p>
+              <h2 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Most of the work went into what happens when something fails.
+              </h2>
+              <p className="mt-4 leading-relaxed text-paper/65">
+                A delivery app is easy while the network holds and nobody taps
+                twice. These are the parts that deal with the rest of it.
+              </p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="text-4xl mb-2">🔒</div>
-              <h3 className="font-semibold mb-2">Secure OAuth</h3>
-              <p className="text-sm text-gray-600">Your data stays protected</p>
+
+            <div className="mt-16 grid gap-px overflow-hidden rounded-2xl bg-paper/10 sm:grid-cols-2">
+              {GUARANTEES.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="bg-ink p-8 sm:p-9">
+                  <Icon
+                    className="h-5 w-5 text-ember"
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                  <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
+                    {title}
+                  </h3>
+                  <p className="mt-2 max-w-[46ch] text-sm leading-relaxed text-paper/60">
+                    {body}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+
+        {/* ---------------------------------------------------------------
+            CTA
+            --------------------------------------------------------------- */}
+        <section className="mx-auto max-w-6xl px-5 py-24 md:py-28">
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="max-w-[20ch] font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Easier to watch an order come through than to read about it.
+              </h2>
+              <p className="mt-4 max-w-[48ch] leading-relaxed text-ink-2">
+                Connect a store and the next paid order appears on its own.
+              </p>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-4">
+              <Link
+                href="/login"
+                className="group inline-flex items-center gap-2 rounded-xl bg-ink px-6 py-3.5 font-medium text-paper shadow-lg shadow-ink/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/25 active:translate-y-0 active:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember"
+              >
+                Open the dashboard
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-ink-2 underline decoration-ink/20 underline-offset-4 transition-colors hover:text-ink hover:decoration-ember"
+              >
+                What it costs
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <SiteFooter />
     </div>
   )
 }
