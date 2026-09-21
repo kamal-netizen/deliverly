@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import crypto from 'crypto';
-import { shopifyEnv } from '@/lib/env';
-import { SHOP_DOMAIN_PATTERN, OAUTH_STATE_COOKIE } from '@/lib/shopify';
+import { shopifyEnv, dashboardUrl } from '@/lib/env';
+import { SHOP_DOMAIN_PATTERN, OAUTH_STATE_COOKIE, ShopifyAPI } from '@/lib/shopify';
+import { reconcileWebhooks } from '@/lib/shopify-webhooks';
 
 /**
  * Shopify OAuth - Step 2: Handle callback and exchange code for access token
@@ -92,64 +93,30 @@ export async function GET(request: NextRequest) {
 
     console.log('[OAuth Callback] Successfully stored config:', upsertData);
 
-    // Register webhooks
-    await registerWebhooks(shop, access_token);
+    // Reconcile rather than blindly register: a reinstall would otherwise
+    // stack duplicate webhooks, and a changed WEBHOOK_URL would leave the old
+    // ones pointing nowhere.
+    try {
+      const result = await reconcileWebhooks(new ShopifyAPI(shop, access_token));
+
+      if (result.failures.length > 0) {
+        console.error('[OAuth Callback] Webhook reconciliation issues:', result.failures);
+      }
+    } catch (error) {
+      // The install itself succeeded; surfacing a failure here would strand the
+      // merchant. /api/webhooks/reconcile can repair it.
+      console.error('[OAuth Callback] Webhook reconciliation failed:', error);
+    }
 
     // Redirect to frontend dashboard
-    const dashboardUrl = process.env.FRONTEND_DASHBOARD_URL || process.env.NEXT_PUBLIC_APP_URL;
-    const redirectResponse = NextResponse.redirect(`${dashboardUrl}/dashboard`);
+    const dashboard = dashboardUrl();
+    const redirectResponse = NextResponse.redirect(`${dashboard}/dashboard`);
     redirectResponse.cookies.delete(OAUTH_STATE_COOKIE);
     return redirectResponse;
 
   } catch (error: any) {
     console.error('OAuth callback error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-/**
- * Register required webhooks
- */
-async function registerWebhooks(shop: string, accessToken: string) {
-  const webhookBaseUrl = process.env.WEBHOOK_URL || process.env.NEXT_PUBLIC_APP_URL;
-  
-  console.log('[Webhook Registration] Starting for shop:', shop);
-  console.log('[Webhook Registration] Base URL:', webhookBaseUrl);
-  
-  const webhooks = [
-    {
-      topic: 'orders/create',
-      address: `${webhookBaseUrl}/api/webhooks/orders/create`,
-      format: 'json'
-    },
-    {
-      topic: 'orders/cancelled',
-      address: `${webhookBaseUrl}/api/webhooks/orders/cancelled`,
-      format: 'json'
-    }
-  ];
-
-  for (const webhook of webhooks) {
-    try {
-      console.log(`[Webhook Registration] Registering ${webhook.topic} at ${webhook.address}`);
-      const response = await fetch(`https://${shop}/admin/api/2024-01/webhooks.json`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ webhook })
-      });
-      
-      const result = await response.json();
-      if (response.ok) {
-        console.log(`[Webhook Registration] SUCCESS ${webhook.topic}:`, result.webhook?.id);
-      } else {
-        console.error(`[Webhook Registration] FAILED ${webhook.topic}:`, result);
-      }
-    } catch (error) {
-      console.error(`[Webhook Registration] ERROR ${webhook.topic}:`, error);
-    }
+    return NextResponse.json({ error: 'Shopify install failed' }, { status: 500 });
   }
 }
 

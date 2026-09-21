@@ -36,6 +36,7 @@ export const ROUTE_GUARDS: RouteGuardSpec[] = [
   { file: 'app/api/auth/shopify/route.ts', path: '/api/auth/shopify', methods: ['GET'], guard: 'staff' },
   { file: 'app/api/auth/shopify/disconnect/route.ts', path: '/api/auth/shopify/disconnect', methods: ['POST'], guard: 'staff' },
   { file: 'app/api/webhooks/status/route.ts', path: '/api/webhooks/status', methods: ['GET'], guard: 'staff' },
+  { file: 'app/api/webhooks/reconcile/route.ts', path: '/api/webhooks/reconcile', methods: ['POST'], guard: 'staff' },
 
   // --- rider (Android app, Bearer) ---
   { file: 'app/api/rider/stops/route.ts', path: '/api/rider/stops', methods: ['GET'], guard: 'rider' },

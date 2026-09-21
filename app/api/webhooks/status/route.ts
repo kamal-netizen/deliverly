@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { requireStaff } from '@/lib/auth';
+import { getActiveShopifyConfig, ShopifyAPI } from '@/lib/shopify';
+import { listWebhooks, isOurs, OUR_TOPICS, addressFor } from '@/lib/shopify-webhooks';
 
 /**
- * Check webhook logs and registration status
+ * Webhook registration and processing health.
  * GET /api/webhooks/status
  */
 export async function GET(request: NextRequest) {
@@ -11,47 +13,42 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    // Get Shopify config
-    const { data: config, error: configError } = await getSupabaseAdmin()
-      .from('shopify_config')
-      .select('shop_domain, access_token')
-      .order('installed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const config = await getActiveShopifyConfig();
 
-    console.log('[Webhook Status] Config query result:', { config, configError });
-
-    if (configError || !config) {
-      const origin = request.headers.get('origin');
-      return NextResponse.json({
-        error: 'Shopify not connected',
-        details: configError?.message,
-        webhooksRegistered: false
-      }, { status: 404 });
+    if (!config) {
+      return NextResponse.json(
+        { error: 'Shopify not connected', webhooksRegistered: false },
+        { status: 404 }
+      );
     }
 
-    // Fetch registered webhooks from Shopify
-    let registeredWebhooks = [];
+    // Distinguish "no webhooks registered" from "could not reach Shopify".
+    // Collapsing the two used to report a false negative, which is exactly the
+    // signal that pushed an operator toward the destructive cleanup route.
+    let ourWebhooks: { id: number; topic: string; address: string }[] = [];
+    let shopifyReachable = true;
+
     try {
-      const response = await fetch(
-        `https://${config.shop_domain}/admin/api/2024-01/webhooks.json`,
-        {
-          headers: {
-            'X-Shopify-Access-Token': config.access_token,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        registeredWebhooks = data.webhooks || [];
-      }
+      const client = new ShopifyAPI(config.shop_domain, config.access_token);
+      ourWebhooks = (await listWebhooks(client))
+        .filter(isOurs)
+        .map((w) => ({ id: w.id, topic: w.topic, address: w.address }));
     } catch (error) {
       console.error('Error fetching webhooks from Shopify:', error);
+      shopifyReachable = false;
     }
 
-    // Get recent webhook logs
+    const expected = OUR_TOPICS.map((topic) => {
+      const address = addressFor(topic);
+      return {
+        topic,
+        address,
+        registered: ourWebhooks.some(
+          (w) => w.topic === topic && w.address === address
+        ),
+      };
+    });
+
     const { data: logs } = await getSupabaseAdmin()
       .from('webhook_log')
       // Never select payload: it holds the entire Shopify order, i.e. customer
@@ -60,42 +57,34 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    // Get webhook stats
-    const { count: totalWebhooks } = await getSupabaseAdmin()
-      .from('webhook_log')
-      .select('*', { count: 'exact', head: true });
+    const admin = getSupabaseAdmin();
 
-    const { count: processedWebhooks } = await getSupabaseAdmin()
-      .from('webhook_log')
-      .select('*', { count: 'exact', head: true })
-      .eq('processed', true);
-
-    const { count: failedWebhooks } = await getSupabaseAdmin()
-      .from('webhook_log')
-      .select('*', { count: 'exact', head: true })
-      .not('error', 'is', null);
+    const [{ count: total }, { count: processed }, { count: failed }] =
+      await Promise.all([
+        admin.from('webhook_log').select('*', { count: 'exact', head: true }),
+        admin
+          .from('webhook_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('processed', true),
+        admin
+          .from('webhook_log')
+          .select('*', { count: 'exact', head: true })
+          .not('error', 'is', null),
+      ]);
 
     return NextResponse.json({
-      webhooksRegistered: registeredWebhooks.length > 0,
-      registeredWebhooks: registeredWebhooks.map((w: any) => ({
-        id: w.id,
-        topic: w.topic,
-        address: w.address,
-        createdAt: w.created_at
-      })),
-      webhookUrl: process.env.WEBHOOK_URL,
+      shopifyReachable,
+      webhooksRegistered: shopifyReachable && expected.every((e) => e.registered),
+      expected,
       stats: {
-        total: totalWebhooks || 0,
-        processed: processedWebhooks || 0,
-        failed: failedWebhooks || 0
+        total: total || 0,
+        processed: processed || 0,
+        failed: failed || 0,
       },
-      recentLogs: logs || []
+      recentLogs: logs || [],
     });
-
   } catch (error: any) {
     console.error('Error checking webhook status:', error);
-    return NextResponse.json({
-      error: error.message
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Could not read webhook status' }, { status: 500 });
   }
 }
