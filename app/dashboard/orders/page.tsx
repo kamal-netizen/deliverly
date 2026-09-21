@@ -112,7 +112,6 @@ function OrdersContent() {
           <option value="pending">Pending</option>
           <option value="assigned">Assigned</option>
           <option value="delivered">Delivered</option>
-          <option value="fulfilled">Fulfilled</option>
           <option value="cancelled">Cancelled</option>
         </select>
       </div>

@@ -34,9 +34,11 @@ export async function DELETE(
       );
     }
 
-    if (order.status === 'delivered' || order.status === 'fulfilled') {
+    // Unassigning resets the order to 'pending'. Doing that to a cancelled
+    // order resurrected it, so cancelled is guarded here too.
+    if (order.status === 'delivered' || order.status === 'cancelled') {
       return NextResponse.json(
-        { error: 'Cannot unassign delivered/fulfilled order' },
+        { error: `Cannot unassign a ${order.status} order` },
         { status: 400 }
       );
     }

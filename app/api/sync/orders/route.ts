@@ -1,164 +1,177 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { nanoid } from 'nanoid';
 import { requireStaff } from '@/lib/auth';
+import { createShopifyClient, getActiveShopifyConfig, markSynced } from '@/lib/shopify';
+import { mapShopifyOrderToRow, initialStatusFor } from '@/lib/shopify-orders';
+import { nanoid } from 'nanoid';
+
+/** Pages of 250. A cap so one request cannot run unbounded. */
+const MAX_PAGES = 20;
+
+/** Parallelism for per-order updates. */
+const UPDATE_CONCURRENCY = 10;
+
+export const maxDuration = 60;
 
 /**
- * Manual sync endpoint to pull all orders from Shopify
- * GET /api/sync/orders
+ * Pull orders from Shopify into the local database.
+ * POST /api/sync/orders            incremental, since the last successful sync
+ * POST /api/sync/orders?full=true  everything
+ *
+ * This was a GET that performed a 250-order mass write, so a link prefetch or a
+ * crawler could trigger it.
  */
 export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
   try {
-    // 1. Get Shopify credentials
-    const { data: config } = await getSupabaseAdmin()
-      .from('shopify_config')
-      .select('shop_domain, access_token')
-      .single();
+    const config = await getActiveShopifyConfig();
+    const shopify = await createShopifyClient();
 
-    if (!config?.access_token) {
-      return NextResponse.json({
-        error: 'Shopify not connected'
-      }, { status: 400 });
+    if (!config || !shopify) {
+      return NextResponse.json({ error: 'Shopify not connected' }, { status: 400 });
     }
 
-    // 2. Fetch all orders from Shopify (last 250 orders)
-    const response = await fetch(
-      `https://${config.shop_domain}/admin/api/2024-01/orders.json?status=any&limit=250`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': config.access_token,
-          'Content-Type': 'application/json',
-        },
+    const full = request.nextUrl.searchParams.get('full') === 'true';
+
+    // Incremental by default. The old version always requested the most recent
+    // 250 orders and never paged, so a store with more than that silently never
+    // imported the rest.
+    const params = new URLSearchParams({ status: 'any', limit: '250' });
+    if (!full && config.last_sync_at) {
+      params.set('updated_at_min', config.last_sync_at);
+    }
+
+    let pageInfo: string | null = null;
+    let pages = 0;
+    let fetched = 0;
+    let inserted = 0;
+    let updated = 0;
+    const failures: { shopifyOrderId: number; reason: string }[] = [];
+
+    do {
+      const page: { items: any[]; nextPageInfo: string | null } = await shopify.getPage<any>(
+        `/orders.json?${params.toString()}`,
+        'orders',
+        pageInfo
+      );
+
+      pages++;
+      fetched += page.items.length;
+
+      if (page.items.length > 0) {
+        const outcome = await syncChunk(page.items, config.shop_domain);
+        inserted += outcome.inserted;
+        updated += outcome.updated;
+        failures.push(...outcome.failures);
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json({
-        error: 'Failed to fetch from Shopify',
-        details: errorText
-      }, { status: 500 });
+      pageInfo = page.nextPageInfo;
+    } while (pageInfo && pages < MAX_PAGES);
+
+    // Only advance the watermark when nothing failed, so a partial sync does
+    // not skip the orders it could not write on the next run.
+    if (failures.length === 0) {
+      await markSynced(config.id);
     }
-
-    const { orders } = await response.json();
-
-    if (!orders || orders.length === 0) {
-      return NextResponse.json({
-        message: 'No orders found in Shopify',
-        synced: 0
-      });
-    }
-
-    // 3. Sync each order to database
-    let synced = 0;
-    let skipped = 0;
-    const errors: any[] = [];
-
-    for (const order of orders) {
-      try {
-        // Check if order already exists
-        const { data: existing } = await getSupabaseAdmin()
-          .from('orders')
-          .select('id')
-          .eq('shopify_order_id', order.id)
-          .single();
-
-        // Extract customer info
-        const customer = order.customer || {};
-        const shippingAddress = order.shipping_address || {};
-        const billingAddress = order.billing_address || {};
-
-        const nameFromAddress = (address: any) => {
-          if (!address) return '';
-          if (address.name) return address.name;
-          const parts = [address.first_name, address.last_name].filter(Boolean);
-          return parts.join(' ');
-        };
-
-        const customerName =
-          [customer.first_name, customer.last_name].filter(Boolean).join(' ') ||
-          nameFromAddress(shippingAddress) ||
-          nameFromAddress(billingAddress) ||
-          order.email ||
-          'Unknown';
-
-        // Determine initial status based on Shopify fulfillment
-        let status = 'pending';
-        if (order.fulfillment_status === 'fulfilled') {
-          status = 'delivered';
-        } else if (order.financial_status === 'paid') {
-          status = 'pending';
-        }
-
-        const orderData = {
-          shopify_order_id: order.id,
-          order_number: order.name,
-          customer_name: customerName,
-          customer_phone: customer.phone || shippingAddress.phone || billingAddress.phone || null,
-          customer_email: customer.email || order.email || null,
-          shipping_address: shippingAddress,
-          line_items: order.line_items,
-          total_price: parseFloat(order.total_price || '0'),
-          subtotal_price: parseFloat(order.subtotal_price || '0'),
-          total_tax: parseFloat(order.total_tax || '0'),
-          total_discounts: parseFloat(order.total_discounts || '0'),
-          currency: order.currency || 'AED',
-          financial_status: order.financial_status,
-          fulfillment_status: order.fulfillment_status,
-          payment_gateway_names: order.payment_gateway_names || [],
-          tags: order.tags ? order.tags.split(',').map((t: string) => t.trim()) : [],
-          note: order.note,
-          order_url: `https://${config.shop_domain}/admin/orders/${order.id}`,
-          created_at: order.created_at
-        };
-
-        const { error } = existing
-          ? await getSupabaseAdmin()
-              .from('orders')
-              .update(orderData)
-              .eq('id', existing.id)
-          : await getSupabaseAdmin()
-              .from('orders')
-              .insert({
-                id: crypto.randomUUID(),
-                tracking_code: nanoid(10),
-                status,
-                ...orderData
-              });
-
-        if (error) {
-          errors.push({ order_id: order.id, error: error.message });
-        } else {
-          synced++;
-        }
-
-      } catch (err: any) {
-        errors.push({ order_id: order.id, error: err.message });
-      }
-    }
-
-    // 4. Update last sync timestamp
-    await getSupabaseAdmin()
-      .from('shopify_config')
-      .update({ last_sync_at: new Date().toISOString() })
-      .not('id', 'is', null);
 
     return NextResponse.json({
-      success: true,
-      total: orders.length,
-      synced,
-      skipped,
-      errors: errors.length > 0 ? errors : undefined
+      success: failures.length === 0,
+      mode: full ? 'full' : 'incremental',
+      pages,
+      fetched,
+      inserted,
+      updated,
+      failed: failures.length,
+      failures: failures.slice(0, 10),
+      truncated: Boolean(pageInfo),
     });
-
   } catch (error: any) {
     console.error('Sync error:', error);
-    return NextResponse.json({
-      error: error.message,
-      stack: error.stack
-    }, { status: 500 });
+    // Never return error.stack: this used to hand the caller a stack trace.
+    return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
   }
+}
+
+/**
+ * Write one page of Shopify orders.
+ *
+ * Partition with a single query, then bulk-insert the new ones. The previous
+ * version ran an existence probe plus a write per order - roughly 500 serial
+ * round-trips for a full page, which timed out on any real store and raced the
+ * orders/create webhook into duplicate rows.
+ */
+async function syncChunk(orders: any[], shopDomain: string) {
+  const admin = getSupabaseAdmin();
+
+  const ids = orders.map((o) => o.id);
+
+  const { data: existingRows, error: lookupError } = await admin
+    .from('orders')
+    .select('shopify_order_id')
+    .in('shopify_order_id', ids);
+
+  if (lookupError) throw lookupError;
+
+  const existing = new Set((existingRows ?? []).map((r) => r.shopify_order_id));
+
+  const toInsert = orders.filter((o) => !existing.has(o.id));
+  const toUpdate = orders.filter((o) => existing.has(o.id));
+
+  const failures: { shopifyOrderId: number; reason: string }[] = [];
+  let inserted = 0;
+
+  if (toInsert.length > 0) {
+    const rows = toInsert.map((order) => ({
+      ...mapShopifyOrderToRow(order, shopDomain),
+      tracking_code: nanoid(10),
+      status: initialStatusFor(order),
+    }));
+
+    // Ignore duplicates rather than failing the batch: the orders/create
+    // webhook may have inserted one of these between the lookup and now.
+    const { data, error } = await admin
+      .from('orders')
+      .upsert(rows, { onConflict: 'shopify_order_id', ignoreDuplicates: true })
+      .select('shopify_order_id');
+
+    if (error) {
+      failures.push(
+        ...toInsert.map((o) => ({ shopifyOrderId: o.id, reason: error.message }))
+      );
+    } else {
+      inserted = data?.length ?? 0;
+    }
+  }
+
+  // Updates carry only Shopify-sourced columns. tracking_code and status are
+  // local facts - status reflects what a rider actually did, and overwriting it
+  // from Shopify would resurrect delivered orders as pending.
+  let updated = 0;
+
+  for (let i = 0; i < toUpdate.length; i += UPDATE_CONCURRENCY) {
+    const batch = toUpdate.slice(i, i + UPDATE_CONCURRENCY);
+
+    const results = await Promise.all(
+      batch.map(async (order) => {
+        const { error } = await admin
+          .from('orders')
+          .update(mapShopifyOrderToRow(order, shopDomain))
+          .eq('shopify_order_id', order.id);
+
+        return { id: order.id, error };
+      })
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        failures.push({ shopifyOrderId: result.id, reason: result.error.message });
+      } else {
+        updated++;
+      }
+    }
+  }
+
+  return { inserted, updated, failures };
 }

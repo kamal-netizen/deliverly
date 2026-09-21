@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge'
 import { OrderStatus } from '@/types'
 
-const statusConfig: Record<OrderStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+// fulfilled is deliberately absent: status is the delivery lifecycle, and
+// "fulfilled in Shopify" is shopify_fulfillment_id being set. See migration 008.
+const statusConfig: Record<Exclude<OrderStatus, 'fulfilled'>, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
   pending: {
     label: 'Pending',
     variant: 'secondary',
@@ -17,11 +19,6 @@ const statusConfig: Record<OrderStatus, { label: string; variant: 'default' | 's
     variant: 'default',
     className: 'bg-green-100 text-green-800 hover:bg-green-100',
   },
-  fulfilled: {
-    label: 'Fulfilled',
-    variant: 'default',
-    className: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
-  },
   cancelled: {
     label: 'Cancelled',
     variant: 'destructive',
@@ -35,7 +32,7 @@ const statusConfig: Record<OrderStatus, { label: string; variant: 'default' | 's
 }
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
-  const config = statusConfig[status]
+  const config = statusConfig[status as Exclude<OrderStatus, 'fulfilled'>]
   
   // Handle invalid or undefined status
   if (!config) {

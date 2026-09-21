@@ -106,9 +106,11 @@ class ApiClient {
 
   // Stats
   async getStats(): Promise<{
-    today: { total: number; pending: number; assigned: number; delivered: number; fulfilled: number }
+    today: { total: number; pending: number; assigned: number; delivered: number; cancelled: number }
     activeRiders: number
     allTime: { totalOrders: number; totalDeliveries: number }
+    awaitingFulfillment: number
+    timezone: string
   }> {
     return this.request('/stats')
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { fulfillShopifyOrder } from '@/lib/fulfillment';
+import { getActiveShopifyConfig } from '@/lib/shopify';
 import { requireRider } from '@/lib/auth';
 
 /**
@@ -41,8 +42,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (order.status === 'delivered' || order.status === 'fulfilled') {
+    if (order.status === 'delivered') {
       return NextResponse.json({ error: 'Order already delivered' }, { status: 400 });
+    }
+
+    if (order.status === 'cancelled') {
+      return NextResponse.json({ error: 'Order was cancelled' }, { status: 400 });
     }
 
     let proofImagePath = null;
@@ -79,20 +84,21 @@ export async function POST(request: NextRequest) {
     });
 
     // Update order status
-    await getSupabaseAdmin()
+    const { error: statusError } = await getSupabaseAdmin()
       .from('orders')
       .update({
         status: 'delivered',
-        delivered_at: new Date().toISOString()
+        delivered_at: new Date().toISOString(),
       })
       .eq('id', orderId);
 
-    // Get notify_customer setting
-    const { data: config } = await getSupabaseAdmin()
-      .from('shopify_config')
-      .select('notify_customer_on_fulfill')
-      .single();
+    if (statusError) {
+      throw statusError;
+    }
 
+    // .single() threw when no store was connected, which failed the whole
+    // request even though the delivery itself had already been recorded.
+    const config = await getActiveShopifyConfig();
     const notifyCustomer = config?.notify_customer_on_fulfill ?? true;
 
     // Fulfill in Shopify
@@ -102,8 +108,10 @@ export async function POST(request: NextRequest) {
     );
 
     if (!fulfillmentResult.success) {
+      // The delivery happened; only the Shopify side failed. The error is
+      // recorded on the order (fulfillment_error) so it is visible rather than
+      // living only in the logs, and the response carries it too.
       console.error('Fulfillment failed:', fulfillmentResult.error);
-      // Don't fail the entire request - order is still marked delivered
     }
 
     // Generate signed URL for proof image
@@ -129,6 +137,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Error marking order delivered:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Could not record the delivery' }, { status: 500 });
   }
 }

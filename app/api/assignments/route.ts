@@ -34,9 +34,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    if (order.status === 'delivered' || order.status === 'fulfilled') {
+    // 'fulfilled' is no longer a status (migration 008). 'cancelled' is the
+    // value that actually needs guarding - the old check let a cancelled order
+    // be assigned to a rider.
+    if (order.status === 'delivered' || order.status === 'cancelled') {
       return NextResponse.json(
-        { error: 'Cannot assign delivered order' },
+        { error: `Cannot assign a ${order.status} order` },
         { status: 400 }
       );
     }
