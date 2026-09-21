@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from './supabase-server';
-import { supabaseEnv } from './env';
+import { supabaseEnv, appUrl } from './env';
 
 export type Role = 'staff' | 'rider';
 
@@ -122,7 +122,38 @@ export async function getAuthUser(
  * mutation needs an origin check. Bearer callers are exempt: an attacker's page
  * cannot set an Authorization header on a cross-site request.
  */
-function csrfViolation(
+/**
+ * Hosts a same-origin request may legitimately come from.
+ *
+ * Compared on host rather than full origin because TLS terminates at the
+ * reverse proxy: the browser sends https, the app sees http internally, and
+ * a naive origin equality check rejects every same-site mutation with a 403.
+ */
+function allowedHosts(request: NextRequest): Set<string> {
+  const hosts = new Set<string>();
+
+  const forwarded = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  if (forwarded) hosts.add(forwarded.toLowerCase());
+
+  hosts.add(request.nextUrl.host.toLowerCase());
+
+  try {
+    hosts.add(new URL(appUrl()).host.toLowerCase());
+  } catch {
+    // NEXT_PUBLIC_APP_URL unset; the header-derived hosts still apply.
+  }
+
+  return hosts;
+}
+
+/**
+ * Reject cross-site state-changing requests.
+ *
+ * Cookies ride along automatically, so a cookie-authenticated mutation needs
+ * an origin check. Bearer callers are exempt: an attacker's page cannot set
+ * an Authorization header on a cross-site request.
+ */
+export function csrfViolation(
   request: NextRequest,
   via: 'cookie' | 'bearer'
 ): NextResponse | null {
@@ -133,12 +164,27 @@ function csrfViolation(
 
   const site = request.headers.get('sec-fetch-site');
   if (site && site !== 'same-origin') {
+    console.warn('CSRF: blocked sec-fetch-site=' + site + ' for ' + request.nextUrl.pathname);
     return forbidden('Cross-site request blocked');
   }
 
   const origin = request.headers.get('origin');
-  if (origin && origin !== request.nextUrl.origin) {
-    return forbidden('Cross-origin request blocked');
+
+  if (origin) {
+    let originHost: string;
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      console.warn('CSRF: unparseable Origin ' + origin);
+      return forbidden('Cross-origin request blocked');
+    }
+
+    if (!allowedHosts(request).has(originHost)) {
+      console.warn(
+        'CSRF: origin host ' + originHost + ' not in [' + [...allowedHosts(request)].join(', ') + ']'
+      );
+      return forbidden('Cross-origin request blocked');
+    }
   }
 
   return null;
@@ -153,6 +199,9 @@ async function requireRole(
   if (!user) return { ok: false, response: unauthorized() };
 
   if (user.role !== role) {
+    console.warn(
+      'AUTH: ' + request.nextUrl.pathname + ' needs ' + role + ' but caller is ' + user.role
+    );
     return { ok: false, response: forbidden() };
   }
 
