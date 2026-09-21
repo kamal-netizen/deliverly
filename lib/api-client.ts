@@ -94,6 +94,24 @@ class ApiClient {
     })
   }
 
+  async getRiderLocations(): Promise<{
+    riders: {
+      id: string
+      name: string | null
+      phone: string | null
+      latitude: number | null
+      longitude: number | null
+      lastUpdate: string | null
+      ageMinutes: number | null
+      live: boolean
+      assignedOrders: number
+    }[]
+    staleAfterMinutes: number
+    neverReported: number
+  }> {
+    return this.request('/riders/locations')
+  }
+
   // Helper method for dispatch board
   async assignRider(orderId: string, riderId: string): Promise<void> {
     return this.assignOrder({ orderId, riderId })

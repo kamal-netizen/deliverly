@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Truck,
+  Map,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import toast from 'react-hot-toast'
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Dispatch', href: '/dashboard/dispatch', icon: Truck },
   { name: 'Orders', href: '/dashboard/orders', icon: Package },
   { name: 'Riders', href: '/dashboard/riders', icon: Users },
+  { name: 'Live map', href: '/dashboard/map', icon: Map },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 

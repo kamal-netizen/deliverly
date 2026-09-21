@@ -30,6 +30,7 @@ export const ROUTE_GUARDS: RouteGuardSpec[] = [
   { file: 'app/api/assignments/[id]/route.ts', path: '/api/assignments/[id]', methods: ['DELETE'], guard: 'staff' },
   { file: 'app/api/riders/route.ts', path: '/api/riders', methods: ['GET', 'POST'], guard: 'staff' },
   { file: 'app/api/riders/[id]/route.ts', path: '/api/riders/[id]', methods: ['PATCH', 'DELETE'], guard: 'staff' },
+  { file: 'app/api/riders/locations/route.ts', path: '/api/riders/locations', methods: ['GET'], guard: 'staff' },
   { file: 'app/api/stats/route.ts', path: '/api/stats', methods: ['GET'], guard: 'staff' },
   { file: 'app/api/sync/orders/route.ts', path: '/api/sync/orders', methods: ['POST'], guard: 'staff' },
   { file: 'app/api/shopify/status/route.ts', path: '/api/shopify/status', methods: ['GET'], guard: 'staff' },
