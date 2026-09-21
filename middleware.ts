@@ -10,6 +10,18 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  * too would add a second round-trip to the auth server on every API call.
  */
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Shopify sends a merchant installing or opening the app to the App URL
+  // with a signed query string and no code. Hand that to the install route,
+  // which verifies the signature and starts OAuth. Checked before anything
+  // else because this path needs no session and no Supabase client.
+  if (pathname === '/' && searchParams.has('shop') && searchParams.has('hmac')) {
+    const install = new URL('/api/auth/shopify/install', request.url);
+    install.search = request.nextUrl.search;
+    return NextResponse.redirect(install);
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,7 +54,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
 
   if (!user && pathname.startsWith('/dashboard')) {
     const loginUrl = new URL('/login', request.url);
@@ -58,5 +69,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/', '/dashboard/:path*', '/login'],
 };

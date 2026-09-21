@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import crypto from 'crypto';
 import { shopifyEnv, dashboardUrl } from '@/lib/env';
 import { SHOP_DOMAIN_PATTERN, OAUTH_STATE_COOKIE, ShopifyAPI } from '@/lib/shopify';
+import { verifyShopifyQueryHmac, timingSafeEqual } from '@/lib/webhook-verify';
 import { reconcileWebhooks } from '@/lib/shopify-webhooks';
 
 /**
@@ -35,17 +35,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid OAuth state' }, { status: 401 });
     }
 
-    // Verify HMAC
-    const queryParams = new URLSearchParams(searchParams);
-    queryParams.delete('hmac');
-    const message = queryParams.toString();
-    
-    const hash = crypto
-      .createHmac('sha256', shopifyEnv().apiSecret)
-      .update(message)
-      .digest('hex');
-
-    if (!timingSafeEqual(hash, hmac)) {
+    // Shared with the install route, and sorts the parameters as Shopify's
+    // spec requires - they usually arrive sorted, so skipping that appears to
+    // work until the day it does not.
+    if (!verifyShopifyQueryHmac(searchParams, shopifyEnv().apiSecret)) {
       return NextResponse.json({ error: 'Invalid HMAC' }, { status: 401 });
     }
 
@@ -120,17 +113,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Constant-time string comparison.
- *
- * crypto.timingSafeEqual throws when lengths differ, so lengths are compared
- * first and the throw is avoided rather than swallowed.
- */
-function timingSafeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-
-  if (bufA.length !== bufB.length) return false;
-
-  return crypto.timingSafeEqual(bufA, bufB);
-}

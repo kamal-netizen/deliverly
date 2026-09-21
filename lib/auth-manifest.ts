@@ -67,6 +67,14 @@ export const ROUTE_GUARDS: RouteGuardSpec[] = [
       'Customer-facing tracking. The unguessable nanoid tracking code is the credential; the response carries no customer name, email or phone.',
   },
   {
+    file: 'app/api/auth/shopify/install/route.ts',
+    path: '/api/auth/shopify/install',
+    methods: ['GET'],
+    guard: 'public-hmac',
+    reason:
+      'Shopify sends a merchant here to begin an install, before they have any Deliverly login. Authenticated by the query HMAC, which only Shopify can produce.',
+  },
+  {
     file: 'app/api/auth/shopify/callback/route.ts',
     path: '/api/auth/shopify/callback',
     methods: ['GET'],
