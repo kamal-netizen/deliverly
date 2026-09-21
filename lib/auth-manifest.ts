@@ -41,8 +41,18 @@ export const ROUTE_GUARDS: RouteGuardSpec[] = [
   // --- rider (Android app, Bearer) ---
   { file: 'app/api/rider/stops/route.ts', path: '/api/rider/stops', methods: ['GET'], guard: 'rider' },
   { file: 'app/api/rider/delivered/route.ts', path: '/api/rider/delivered', methods: ['POST'], guard: 'rider' },
+  { file: 'app/api/rider/failed/route.ts', path: '/api/rider/failed', methods: ['POST'], guard: 'rider' },
+  { file: 'app/api/rider/location/route.ts', path: '/api/rider/location', methods: ['POST'], guard: 'rider' },
 
   // --- public ---
+  {
+    file: 'app/api/auth/refresh/route.ts',
+    path: '/api/auth/refresh',
+    methods: ['POST'],
+    guard: 'public',
+    reason:
+      'The refresh token is itself the credential; presenting a valid one is what proves the caller.',
+  },
   {
     file: 'app/api/auth/logout/route.ts',
     path: '/api/auth/logout',
