@@ -17,7 +17,17 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui"],
+        body: ["var(--font-body)", "ui-sans-serif", "system-ui"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+      },
       colors: {
+        paper: "hsl(var(--paper))",
+        "paper-2": "hsl(var(--paper-2))",
+        ink: "hsl(var(--ink))",
+        "ink-2": "hsl(var(--ink-2))",
+        ember: "hsl(var(--ember))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
