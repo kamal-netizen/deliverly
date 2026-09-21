@@ -75,7 +75,12 @@ export function shopifyEnv() {
   return {
     apiKey: requireEnv('SHOPIFY_API_KEY'),
     apiSecret: requireEnv('SHOPIFY_API_SECRET'),
-    webhookSecret: requireEnv('SHOPIFY_WEBHOOK_SECRET'),
+    // Shopify signs webhooks registered through the Admin API with the app's
+    // client secret. A separate signing secret exists only for app-level
+    // subscriptions declared in the Partner dashboard. Defaulting to the API
+    // secret avoids the failure mode where every webhook 401s because the two
+    // were assumed to be different values.
+    webhookSecret: optionalEnv('SHOPIFY_WEBHOOK_SECRET', '') || requireEnv('SHOPIFY_API_SECRET'),
     scopes: optionalEnv(
       'SHOPIFY_SCOPES',
       'read_orders,write_orders,write_fulfillments,read_customers'
