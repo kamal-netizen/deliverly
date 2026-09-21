@@ -58,7 +58,6 @@ export default function DashboardLayout({
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Reports'])
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
 
   const toggleSubmenu = (menuName: string) => {
     setExpandedMenus(prev => 
@@ -69,6 +68,8 @@ export default function DashboardLayout({
   }
 
   useEffect(() => {
+    const supabase = createClient()
+
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -90,11 +91,11 @@ export default function DashboardLayout({
     return () => {
       subscription.unsubscribe()
     }
-  }, [router, supabase])
+  }, [router])
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
+      await createClient().auth.signOut()
       alert('Logged out successfully')
       router.push('/login')
     } catch (error) {

@@ -1,45 +1,58 @@
 import { Order, Rider, AssignmentPayload, CreateRiderPayload } from '@/types'
-import toast from 'react-hot-toast'
 
-// Use relative API URLs since API and frontend are in same app
+// Relative: the API and the dashboard are the same origin, so session cookies
+// ride along automatically and no Authorization header is needed.
 const API_URL = '/api'
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+let redirectingToLogin = false
 
 class ApiClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-      })
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    })
 
-      if (!response.ok) {
-        const error = await response.text()
-        throw new Error(error || 'API request failed')
+    if (!response.ok) {
+      // Session expired or never existed. Bounce once: concurrent polling
+      // queries would otherwise stack up redirects.
+      if (response.status === 401 && typeof window !== 'undefined') {
+        if (!redirectingToLogin) {
+          redirectingToLogin = true
+          window.location.href = '/login'
+        }
+        throw new ApiError(401, 'Your session has expired. Please sign in again.')
       }
 
-      return response.json()
-    } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error)
-      toast.error(`Failed to ${options?.method || 'fetch'} data`)
-      throw error
+      throw new ApiError(response.status, await readErrorMessage(response))
     }
+
+    return response.json()
   }
 
   // Orders
+  // Errors propagate so React Query can set isError. Returning [] here used to
+  // make a 500 render as "No orders found".
   async getOrders(params?: { status?: string; rider_id?: string }): Promise<Order[]> {
-    try {
-      const query = new URLSearchParams(params as any).toString()
-      const result = await this.request<{ orders: Order[] } | Order[]>(`/orders${query ? `?${query}` : ''}`)
-      // Handle both wrapped and direct array responses
-      const orders = Array.isArray(result) ? result : (result as any)?.orders
-      return Array.isArray(orders) ? orders : []
-    } catch (error) {
-      console.error('Failed to fetch orders:', error)
-      return [] // Return empty array on error to prevent filter crashes
-    }
+    const query = new URLSearchParams(params as any).toString()
+    const result = await this.request<{ orders: Order[] } | Order[]>(
+      `/orders${query ? `?${query}` : ''}`
+    )
+    const orders = Array.isArray(result) ? result : (result as any)?.orders
+    return Array.isArray(orders) ? orders : []
   }
 
   async getOrder(id: string): Promise<Order> {
@@ -48,31 +61,23 @@ class ApiClient {
   }
 
   async assignOrder(payload: AssignmentPayload): Promise<void> {
-    console.log('assignOrder called with payload:', JSON.stringify(payload))
-    console.log('orderId:', payload.orderId, 'riderId:', payload.riderId)
     return this.request<void>('/assignments', {
       method: 'POST',
       body: JSON.stringify(payload),
     })
   }
 
-  async unassignOrder(assignmentId: string): Promise<void> {
-    return this.request<void>(`/assignments/${assignmentId}`, {
+  async unassignOrder(orderId: string): Promise<void> {
+    return this.request<void>(`/assignments/${orderId}`, {
       method: 'DELETE',
     })
   }
 
   // Riders
   async getRiders(): Promise<Rider[]> {
-    try {
-      const result = await this.request<{ riders: Rider[] } | Rider[]>('/riders')
-      // Handle both wrapped and direct array responses
-      const riders = Array.isArray(result) ? result : (result as any)?.riders
-      return Array.isArray(riders) ? riders : []
-    } catch (error) {
-      console.error('Failed to fetch riders:', error)
-      return [] // Return empty array on error
-    }
+    const result = await this.request<{ riders: Rider[] } | Rider[]>('/riders')
+    const riders = Array.isArray(result) ? result : (result as any)?.riders
+    return Array.isArray(riders) ? riders : []
   }
 
   async createRider(payload: CreateRiderPayload): Promise<Rider> {
@@ -107,6 +112,17 @@ class ApiClient {
   }> {
     return this.request('/stats')
   }
+}
+
+/** Routes answer with { error: string }; fall back to the status text. */
+async function readErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = await response.json()
+    if (body && typeof body.error === 'string') return body.error
+  } catch {
+    // non-JSON body
+  }
+  return response.statusText || 'Request failed'
 }
 
 export const apiClient = new ApiClient()

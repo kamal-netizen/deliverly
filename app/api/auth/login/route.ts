@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { withCors, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin, getSupabaseAnon } from '@/lib/supabase-server';
+import { resolveRole } from '@/lib/auth';
 
 /**
  * Login user (staff or rider)
  * Returns user info with role
  * POST /api/auth/login
+ *
+ * Response shape is frozen: the Android rider app may depend on it. Add keys,
+ * never rename or remove them.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -26,13 +22,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sign in user using Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password
-    });
+    // Anon client, not service role: signing in needs no elevated privilege.
+    const { data: authData, error: authError } =
+      await getSupabaseAnon().auth.signInWithPassword({ email, password });
 
-    if (authError) {
+    if (authError || !authData.user) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -40,49 +34,57 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = authData.user.id;
-    const userRole = authData.user.user_metadata?.role || 'staff';
 
-    // If rider, fetch rider details
+    // Read the role from app_metadata (service-role-writable only). It used to
+    // come from user_metadata and default to 'staff', which meant any user
+    // could promote themselves with supabase.auth.updateUser().
+    const userRole = await resolveRole(authData.user);
+
+    if (!userRole) {
+      return NextResponse.json(
+        { error: 'Account has no assigned role. Contact an administrator.' },
+        { status: 403 }
+      );
+    }
+
     let riderDetails = null;
     if (userRole === 'rider') {
-      const { data: rider } = await supabaseAdmin
+      const { data: rider } = await getSupabaseAdmin()
         .from('riders')
         .select('*')
         .eq('id', userId)
-        .single();
-      
+        .maybeSingle();
+
       riderDetails = rider;
     }
 
-    // Get Shopify connection status
-    const { data: shopifyConfig } = await supabaseAdmin
+    const { data: shopifyConfig } = await getSupabaseAdmin()
       .from('shopify_config')
       .select('shop_domain')
-      .single();
+      .order('installed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: authData.user.id,
-        email: authData.user.email,
-        name: authData.user.user_metadata.name,
-        role: userRole
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.name ?? null,
+          role: userRole,
+        },
+        rider: riderDetails,
+        session: authData.session,
+        shopify: {
+          connected: !!shopifyConfig,
+          shopDomain: shopifyConfig?.shop_domain || null,
+        },
       },
-      rider: riderDetails,
-      session: authData.session,
-      shopify: {
-        connected: !!shopifyConfig,
-        shopDomain: shopifyConfig?.shop_domain || null
-      }
-    }, { status: 200 });
-
-    return withCors(response, request);
-
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Login failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }

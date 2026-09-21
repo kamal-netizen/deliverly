@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { withCors, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Assign order to rider
  * POST /api/assignments
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const body = await request.json();
     console.log('Assignment request body:', body);
@@ -28,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify order exists and is not already delivered
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order, error: orderError } = await getSupabaseAdmin()
       .from('orders')
       .select('id, status, assigned_rider_id')
       .eq('id', orderId)
@@ -46,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify rider exists
-    const { data: rider, error: riderError } = await supabaseAdmin
+    const { data: rider, error: riderError } = await getSupabaseAdmin()
       .from('riders')
       .select('id, name, active')
       .eq('id', riderId)
@@ -66,7 +62,7 @@ export async function POST(request: NextRequest) {
       : 'assigned';
 
     // Create assignment event
-    await supabaseAdmin.from('delivery_events').insert({
+    await getSupabaseAdmin().from('delivery_events').insert({
       id: crypto.randomUUID(),
       order_id: orderId,
       rider_id: riderId,
@@ -74,7 +70,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update order
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('orders')
       .update({
         assigned_rider_id: riderId,
@@ -91,7 +87,7 @@ export async function POST(request: NextRequest) {
         eventType
       }
     }, { status: 200 });
-    return withCors(response, request);
+    return response;
 
   } catch (error: any) {
     console.error('Error creating assignment:', error);

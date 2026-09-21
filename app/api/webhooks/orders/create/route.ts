@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/webhook-verify';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { nanoid } from 'nanoid';
 
 /**
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(rawBody);
     
     // 4. Log webhook (for debugging and retry handling)
-    await supabaseAdmin.from('webhook_log').insert({
+    await getSupabaseAdmin().from('webhook_log').insert({
       topic: 'orders/create',
       shopify_order_id: payload.id,
       payload,
@@ -37,14 +37,14 @@ export async function POST(request: NextRequest) {
       await processOrderWebhook(payload);
       
       // Mark as processed
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('webhook_log')
         .update({ processed: true })
         .eq('shopify_order_id', payload.id)
         .eq('topic', 'orders/create');
 
       // Update last sync timestamp
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('shopify_config')
         .update({ last_sync_at: new Date().toISOString() })
         .not('id', 'is', null);
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       console.error('Order processing error:', error);
       
       // Log error but still return 200 to avoid retries
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('webhook_log')
         .update({ error: error.message })
         .eq('shopify_order_id', payload.id)
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 async function processOrderWebhook(payload: any) {
   const trackingCode = nanoid(10);
 
-  const { data: config } = await supabaseAdmin
+  const { data: config } = await getSupabaseAdmin()
     .from('shopify_config')
     .select('shop_domain')
     .single();
@@ -106,7 +106,7 @@ async function processOrderWebhook(payload: any) {
   }
 
   // Insert order into database
-  const { error } = await supabaseAdmin.from('orders').insert({
+  const { error } = await getSupabaseAdmin().from('orders').insert({
     id: crypto.randomUUID(),
     shopify_order_id: payload.id,
     order_number: payload.name,

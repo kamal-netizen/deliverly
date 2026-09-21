@@ -1,27 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { corsHeaders, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Disconnect Shopify store
  * POST /api/auth/shopify/disconnect
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     // Get current Shopify config
-    const { data: configs, error: fetchError } = await supabaseAdmin
+    const { data: configs, error: fetchError } = await getSupabaseAdmin()
       .from('shopify_config')
       .select('shop_domain, access_token');
 
-    const origin = request.headers.get('origin');
-    const headers = corsHeaders(origin);
 
     if (fetchError) {
       console.error('[Disconnect] Fetch error:', fetchError);
@@ -33,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: true,
         message: 'No Shopify connection found (already disconnected)' 
-      }, { status: 200, headers });
+      }, { status: 200 });
     }
 
     // Process first config (or all configs if multiple exist)
@@ -77,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Clear ALL Shopify configs from database
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await getSupabaseAdmin()
       .from('shopify_config')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
@@ -92,13 +86,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'Shopify disconnected successfully' 
-    }, { headers });
+    });
 
   } catch (error: any) {
     console.error('Disconnect error:', error);
-    const origin = request.headers.get('origin');
     return NextResponse.json({ 
       error: error.message || 'Failed to disconnect' 
-    }, { status: 500, headers: corsHeaders(origin) });
+    }, { status: 500 });
   }
 }

@@ -1,0 +1,85 @@
+{
+  "_comment": "FROZEN CONTRACT for the Kotlin Android rider app. Derived from route source at commit 4330cf8 (the app could not be booted at capture time: next build was broken and no .env.local existed). Later phases may ADD optional keys; they must never rename, remove, or retype anything listed here. Verified against app/api/rider/stops/route.ts and app/api/rider/delivered/route.ts.",
+  "auth": {
+    "scheme": "Authorization: Bearer <supabase access_token>",
+    "note": "Token is passed to supabaseAdmin.auth.getUser() after stripping the literal prefix 'Bearer '. Missing header => 401."
+  },
+  "GET /api/rider/stops": {
+    "200": {
+      "orders": [
+        {
+          "_note": "Full `orders` row via select('*'), scoped to .eq('assigned_rider_id', user.id) and .in('status', ['assigned','delivered']), ordered by created_at desc.",
+          "id": "uuid",
+          "shopify_order_id": "number",
+          "order_number": "string",
+          "customer_name": "string|null",
+          "customer_phone": "string|null",
+          "customer_email": "string|null",
+          "shipping_address": "object|null",
+          "line_items": "array|null",
+          "total_price": "number|null",
+          "subtotal_price": "number|null",
+          "total_tax": "number|null",
+          "total_discounts": "number|null",
+          "currency": "string|null",
+          "financial_status": "string|null",
+          "fulfillment_status": "string|null",
+          "payment_gateway_names": "string[]|null",
+          "tags": "string[]|null",
+          "note": "string|null",
+          "order_url": "string|null",
+          "tracking_code": "string",
+          "status": "'assigned'|'delivered'",
+          "assigned_rider_id": "uuid|null",
+          "assigned_at": "timestamptz|null",
+          "delivered_at": "timestamptz|null",
+          "fulfilled_at": "timestamptz|null",
+          "shopify_fulfillment_id": "number|null",
+          "priority": "string|null",
+          "estimated_delivery_time": "timestamptz|null",
+          "delivery_notes": "string|null",
+          "created_at": "timestamptz",
+          "updated_at": "timestamptz",
+          "delivery_events": [
+            { "event_type": "string", "created_at": "timestamptz", "notes": "string|null" }
+          ]
+        }
+      ]
+    },
+    "401": { "error": "Unauthorized" },
+    "500": { "error": "<message>" }
+  },
+  "POST /api/rider/delivered": {
+    "request": {
+      "content_type": "multipart/form-data",
+      "fields": {
+        "orderId": "string (required)",
+        "image": "File (optional)",
+        "latitude": "string (optional, parsed as float)",
+        "longitude": "string (optional, parsed as float)",
+        "notes": "string (optional)"
+      }
+    },
+    "200": {
+      "success": true,
+      "order": {
+        "id": "uuid",
+        "order_number": "string",
+        "status": "delivered",
+        "proof_url": "string|null (signed URL, 3600s TTL)"
+      },
+      "fulfillment": {
+        "_note": "Shape of FulfillmentResult from lib/fulfillment.ts. Optional keys may be added; existing keys are frozen.",
+        "success": "boolean",
+        "alreadyFulfilled": "boolean (optional)",
+        "fulfillmentId": "number (optional)",
+        "error": "string (optional)"
+      }
+    },
+    "400": { "error": "Order ID required | Order already delivered" },
+    "401": { "error": "Unauthorized" },
+    "403": { "error": "Forbidden" },
+    "404": { "error": "Order not found" },
+    "500": { "error": "<message>" }
+  }
+}

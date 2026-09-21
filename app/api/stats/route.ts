@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { withCors, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Get dashboard statistics
  * GET /api/stats
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     // Get today's date range
     const today = new Date();
@@ -21,7 +17,7 @@ export async function GET(request: NextRequest) {
     const todayISO = today.toISOString();
 
     // Count orders by status for today
-    const { data: statusCounts, error: statusError } = await supabaseAdmin
+    const { data: statusCounts, error: statusError } = await getSupabaseAdmin()
       .from('orders')
       .select('status')
       .gte('created_at', todayISO);
@@ -36,7 +32,7 @@ export async function GET(request: NextRequest) {
     const fulfilled = statusCounts?.filter(o => o.status === 'fulfilled').length || 0;
 
     // Get active riders count
-    const { count: activeRiders, error: ridersError } = await supabaseAdmin
+    const { count: activeRiders, error: ridersError } = await getSupabaseAdmin()
       .from('riders')
       .select('*', { count: 'exact', head: true })
       .eq('active', true);
@@ -44,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (ridersError) throw ridersError;
 
     // Get all-time totals
-    const { count: totalOrders } = await supabaseAdmin
+    const { count: totalOrders } = await getSupabaseAdmin()
       .from('orders')
       .select('*', { count: 'exact', head: true });
 
@@ -65,11 +61,11 @@ export async function GET(request: NextRequest) {
         }
       }
     }, { status: 200 });
-    return withCors(response, request);
+    return response;
 
   } catch (error: any) {
     console.error('Error fetching stats:', error);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    return withCors(response, request);
+    return response;
   }
 }

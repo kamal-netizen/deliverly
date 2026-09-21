@@ -1,31 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireRider } from '@/lib/auth';
 
 /**
  * Get assigned orders for authenticated rider
  * GET /api/rider/stops
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireRider(request);
+  if (!auth.ok) return auth.response;
+
   try {
-    // Get rider ID from auth header (Supabase JWT)
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Extract user from Supabase auth
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const riderId = user.id;
+    const riderId = auth.user.id;
 
     // Fetch assigned orders for this rider
-    const { data: orders, error } = await supabaseAdmin
+    const { data: orders, error } = await getSupabaseAdmin()
       .from('orders')
       .select(`
         *,

@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { fulfillShopifyOrder } from '@/lib/fulfillment';
+import { requireRider } from '@/lib/auth';
 
 /**
  * Mark order as delivered and upload proof
  * POST /api/rider/delivered
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireRider(request);
+  if (!auth.ok) return auth.response;
+
   try {
-    // Get rider ID from auth
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const riderId = user.id;
+    const riderId = auth.user.id;
 
     // Parse multipart form data
     const formData = await request.formData();
@@ -37,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify order is assigned to this rider
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order, error: orderError } = await getSupabaseAdmin()
       .from('orders')
       .select('id, shopify_order_id, assigned_rider_id, status, order_number')
       .eq('id', orderId)
@@ -62,7 +52,7 @@ export async function POST(request: NextRequest) {
       const fileName = `${orderId}-${Date.now()}.${image.name.split('.').pop()}`;
       const filePath = `proofs/${fileName}`;
 
-      const { error: uploadError } = await supabaseAdmin.storage
+      const { error: uploadError } = await getSupabaseAdmin().storage
         .from('delivery-proofs')
         .upload(filePath, image, {
           contentType: image.type,
@@ -77,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create delivery event
-    await supabaseAdmin.from('delivery_events').insert({
+    await getSupabaseAdmin().from('delivery_events').insert({
       id: crypto.randomUUID(),
       order_id: orderId,
       rider_id: riderId,
@@ -89,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update order status
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('orders')
       .update({
         status: 'delivered',
@@ -98,7 +88,7 @@ export async function POST(request: NextRequest) {
       .eq('id', orderId);
 
     // Get notify_customer setting
-    const { data: config } = await supabaseAdmin
+    const { data: config } = await getSupabaseAdmin()
       .from('shopify_config')
       .select('notify_customer_on_fulfill')
       .single();
@@ -119,7 +109,7 @@ export async function POST(request: NextRequest) {
     // Generate signed URL for proof image
     let proofUrl = null;
     if (proofImagePath) {
-      const { data: signedUrlData } = await supabaseAdmin.storage
+      const { data: signedUrlData } = await getSupabaseAdmin().storage
         .from('delivery-proofs')
         .createSignedUrl(proofImagePath, 3600); // 1 hour
 

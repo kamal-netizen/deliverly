@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { corsHeaders, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Get Shopify connection status
  * GET /api/shopify/status
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     console.log('[Status] Checking Shopify connection status...');
     
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('shopify_config')
       .select('shop_domain, installed_at, last_sync_at')
       .order('installed_at', { ascending: false })
@@ -26,8 +22,6 @@ export async function GET(request: NextRequest) {
 
     console.log('[Status] Query result:', { data, error });
 
-    const origin = request.headers.get('origin');
-    const headers = corsHeaders(origin);
 
     if (error || !data) {
       console.log('[Status] Returning NOT CONNECTED:', error?.message || 'No data found');
@@ -35,7 +29,7 @@ export async function GET(request: NextRequest) {
         connected: false,
         shopDomain: null,
         lastSync: null
-      }, { headers });
+      });
     }
 
     console.log('[Status] Returning CONNECTED:', data.shop_domain);
@@ -43,15 +37,14 @@ export async function GET(request: NextRequest) {
       connected: true,
       shopDomain: data.shop_domain,
       lastSync: data.last_sync_at || data.installed_at
-    }, { headers });
+    });
 
   } catch (error: any) {
     console.error('Status check error:', error);
-    const origin = request.headers.get('origin');
     return NextResponse.json({
       connected: false,
       shopDomain: null,
       lastSync: null
-    }, { headers: corsHeaders(origin) });
+    });
   }
 }

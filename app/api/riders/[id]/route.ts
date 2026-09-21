@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { withCors, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Update rider (activate/deactivate or edit info)
@@ -17,6 +10,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -36,10 +32,10 @@ export async function PATCH(
         { error: 'No valid fields to update' },
         { status: 400 }
       );
-      return withCors(response, request);
+      return response;
     }
 
-    const { data: rider, error } = await supabaseAdmin
+    const { data: rider, error } = await getSupabaseAdmin()
       .from('riders')
       .update(updates)
       .eq('id', id)
@@ -49,18 +45,18 @@ export async function PATCH(
     if (error) {
       if (error.code === 'PGRST116') {
         const response = NextResponse.json({ error: 'Rider not found' }, { status: 404 });
-        return withCors(response, request);
+        return response;
       }
       throw error;
     }
 
     const response = NextResponse.json({ rider }, { status: 200 });
-    return withCors(response, request);
+    return response;
 
   } catch (error: any) {
     console.error('Error updating rider:', error);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    return withCors(response, request);
+    return response;
   }
 }
 
@@ -72,11 +68,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
 
     // Check if rider has any assigned orders
-    const { data: orders, error: ordersError } = await supabaseAdmin
+    const { data: orders, error: ordersError } = await getSupabaseAdmin()
       .from('orders')
       .select('id')
       .eq('assigned_rider_id', id)
@@ -91,11 +90,11 @@ export async function DELETE(
         { error: 'Cannot delete rider with active assignments' },
         { status: 400 }
       );
-      return withCors(response, request);
+      return response;
     }
 
     // Soft delete - deactivate the rider instead of deleting
-    const { data: rider, error } = await supabaseAdmin
+    const { data: rider, error } = await getSupabaseAdmin()
       .from('riders')
       .update({ active: false })
       .eq('id', id)
@@ -105,7 +104,7 @@ export async function DELETE(
     if (error) {
       if (error.code === 'PGRST116') {
         const response = NextResponse.json({ error: 'Rider not found' }, { status: 404 });
-        return withCors(response, request);
+        return response;
       }
       throw error;
     }
@@ -114,11 +113,11 @@ export async function DELETE(
       { success: true, message: 'Rider deactivated', rider },
       { status: 200 }
     );
-    return withCors(response, request);
+    return response;
 
   } catch (error: any) {
     console.error('Error deleting rider:', error);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    return withCors(response, request);
+    return response;
   }
 }

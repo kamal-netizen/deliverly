@@ -48,7 +48,7 @@ function OrdersContent() {
   const handleSyncOrders = async () => {
     setSyncing(true)
     try {
-      const response = await fetch('/api/sync/orders')
+      const response = await fetch('/api/sync/orders', { method: 'POST' })
       const result = await response.json()
       
       if (result.error) {

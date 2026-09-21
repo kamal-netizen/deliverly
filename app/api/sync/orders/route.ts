@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { nanoid } from 'nanoid';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Manual sync endpoint to pull all orders from Shopify
  * GET /api/sync/orders
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     // 1. Get Shopify credentials
-    const { data: config } = await supabaseAdmin
+    const { data: config } = await getSupabaseAdmin()
       .from('shopify_config')
       .select('shop_domain, access_token')
       .single();
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
     for (const order of orders) {
       try {
         // Check if order already exists
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await getSupabaseAdmin()
           .from('orders')
           .select('id')
           .eq('shopify_order_id', order.id)
@@ -112,11 +116,11 @@ export async function GET(request: NextRequest) {
         };
 
         const { error } = existing
-          ? await supabaseAdmin
+          ? await getSupabaseAdmin()
               .from('orders')
               .update(orderData)
               .eq('id', existing.id)
-          : await supabaseAdmin
+          : await getSupabaseAdmin()
               .from('orders')
               .insert({
                 id: crypto.randomUUID(),
@@ -137,7 +141,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Update last sync timestamp
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('shopify_config')
       .update({ last_sync_at: new Date().toISOString() })
       .not('id', 'is', null);

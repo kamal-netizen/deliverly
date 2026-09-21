@@ -1,16 +1,48 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { supabaseEnv, supabaseServiceRoleKey } from './env';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+let adminClient: SupabaseClient | null = null;
 
-// Client for browser/authenticated requests
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Service-role Supabase client for API routes.
+ *
+ * Constructed on first call rather than at module scope: building it eagerly
+ * meant that importing any route without env vars threw during `next build`'s
+ * page-data collection, which is what left this project unbuildable.
+ *
+ * This client bypasses RLS. Every route that uses it is responsible for its own
+ * authorization — see lib/auth.ts.
+ */
+export function getSupabaseAdmin(): SupabaseClient {
+  if (adminClient) return adminClient;
 
-// Admin client with service role (for API routes)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+  const { url } = supabaseEnv();
+
+  adminClient = createClient(url, supabaseServiceRoleKey(), {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return adminClient;
+}
+
+let anonClient: SupabaseClient | null = null;
+
+/**
+ * Anon-key Supabase client for server-side password sign-in.
+ *
+ * Sign-in does not need — and should not have — service-role privileges.
+ */
+export function getSupabaseAnon(): SupabaseClient {
+  if (anonClient) return anonClient;
+
+  const { url, anonKey } = supabaseEnv();
+
+  anonClient = createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  return anonClient;
+}

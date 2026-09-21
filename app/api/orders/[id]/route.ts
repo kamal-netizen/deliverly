@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { withCors, handleOptions } from '@/lib/cors';
-
-/**
- * Handle OPTIONS preflight
- */
-export async function OPTIONS(request: NextRequest) {
-  return handleOptions(request);
-}
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Get single order with full details and event history
@@ -17,10 +10,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
 
-    const { data: order, error } = await supabaseAdmin
+    const { data: order, error } = await getSupabaseAdmin()
       .from('orders')
       .select(`
         *,
@@ -46,7 +42,7 @@ export async function GET(
     if (error) {
       if (error.code === 'PGRST116') {
         const response = NextResponse.json({ error: 'Order not found' }, { status: 404 });
-        return withCors(response, request);
+        return response;
       }
       throw error;
     }
@@ -55,7 +51,7 @@ export async function GET(
     if (order.delivery_events) {
       for (const event of order.delivery_events) {
         if (event.proof_image_path) {
-          const { data: signedUrlData } = await supabaseAdmin.storage
+          const { data: signedUrlData } = await getSupabaseAdmin().storage
             .from('delivery-proofs')
             .createSignedUrl(event.proof_image_path, 3600);
 
@@ -65,11 +61,11 @@ export async function GET(
     }
 
     const response = NextResponse.json({ order }, { status: 200 });
-    return withCors(response, request);
+    return response;
 
   } catch (error: any) {
     console.error('Error fetching order:', error);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    return withCors(response, request);
+    return response;
   }
 }

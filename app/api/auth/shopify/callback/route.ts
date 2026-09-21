@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import crypto from 'crypto';
+import { shopifyEnv } from '@/lib/env';
+import { SHOP_DOMAIN_PATTERN, OAUTH_STATE_COOKIE } from '@/lib/shopify';
 
 /**
  * Shopify OAuth - Step 2: Handle callback and exchange code for access token
@@ -12,9 +14,24 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code');
     const shop = searchParams.get('shop');
     const hmac = searchParams.get('hmac');
+    const state = searchParams.get('state');
 
-    if (!code || !shop || !hmac) {
+    if (!code || !shop || !hmac || !state) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    }
+
+    // `shop` becomes the host of the token-exchange request below, so it is
+    // validated before being interpolated into any URL.
+    if (!SHOP_DOMAIN_PATTERN.test(shop)) {
+      return NextResponse.json({ error: 'Invalid shop domain' }, { status: 400 });
+    }
+
+    // Verify the state nonce set in step 1. Without this the install flow has
+    // no CSRF protection: the nonce used to be generated and then ignored.
+    const expectedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+
+    if (!expectedState || !timingSafeEqual(state, expectedState)) {
+      return NextResponse.json({ error: 'Invalid OAuth state' }, { status: 401 });
     }
 
     // Verify HMAC
@@ -23,11 +40,11 @@ export async function GET(request: NextRequest) {
     const message = queryParams.toString();
     
     const hash = crypto
-      .createHmac('sha256', process.env.SHOPIFY_API_SECRET!)
+      .createHmac('sha256', shopifyEnv().apiSecret)
       .update(message)
       .digest('hex');
 
-    if (hash !== hmac) {
+    if (!timingSafeEqual(hash, hmac)) {
       return NextResponse.json({ error: 'Invalid HMAC' }, { status: 401 });
     }
 
@@ -55,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     // Store access token in database (upsert)
     const now = new Date().toISOString();
-    const { data: upsertData, error: dbError } = await supabaseAdmin
+    const { data: upsertData, error: dbError } = await getSupabaseAdmin()
       .from('shopify_config')
       .upsert({
         shop_domain: shop,
@@ -80,7 +97,9 @@ export async function GET(request: NextRequest) {
 
     // Redirect to frontend dashboard
     const dashboardUrl = process.env.FRONTEND_DASHBOARD_URL || process.env.NEXT_PUBLIC_APP_URL;
-    return NextResponse.redirect(`${dashboardUrl}/dashboard`);
+    const redirectResponse = NextResponse.redirect(`${dashboardUrl}/dashboard`);
+    redirectResponse.cookies.delete(OAUTH_STATE_COOKIE);
+    return redirectResponse;
 
   } catch (error: any) {
     console.error('OAuth callback error:', error);
@@ -132,4 +151,19 @@ async function registerWebhooks(shop: string, accessToken: string) {
       console.error(`[Webhook Registration] ERROR ${webhook.topic}:`, error);
     }
   }
+}
+
+/**
+ * Constant-time string comparison.
+ *
+ * crypto.timingSafeEqual throws when lengths differ, so lengths are compared
+ * first and the throw is avoided rather than swallowed.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+
+  if (bufA.length !== bufB.length) return false;
+
+  return crypto.timingSafeEqual(bufA, bufB);
 }

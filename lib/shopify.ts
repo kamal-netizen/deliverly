@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase-server';
+import { getSupabaseAdmin } from './supabase-server';
 
 interface ShopifyConfig {
   shop_domain: string;
@@ -9,7 +9,7 @@ interface ShopifyConfig {
  * Get Shopify access token from database
  */
 export async function getShopifyConfig(): Promise<ShopifyConfig | null> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('shopify_config')
     .select('shop_domain, access_token')
     .single();
@@ -91,3 +91,9 @@ export async function createShopifyClient(): Promise<ShopifyAPI | null> {
 
   return new ShopifyAPI(config.shop_domain, config.access_token);
 }
+
+/** Shopify shop domains are lowercase handles under myshopify.com. */
+export const SHOP_DOMAIN_PATTERN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+
+/** Cookie holding the OAuth state nonce between install steps. */
+export const OAUTH_STATE_COOKIE = 'shopify_oauth_state';

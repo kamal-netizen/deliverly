@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 /**
  * Public order tracking by tracking code
@@ -12,12 +12,11 @@ export async function GET(
   try {
     const { code } = await params;
 
-    const { data: order, error } = await supabaseAdmin
+    const { data: order, error } = await getSupabaseAdmin()
       .from('orders')
       .select(`
         id,
         order_number,
-        customer_name,
         status,
         created_at,
         delivered_at,
@@ -46,7 +45,7 @@ export async function GET(
 
     let proofUrl = null;
     if (deliveredEvent?.proof_image_path) {
-      const { data: signedUrlData } = await supabaseAdmin.storage
+      const { data: signedUrlData } = await getSupabaseAdmin().storage
         .from('delivery-proofs')
         .createSignedUrl(deliveredEvent.proof_image_path, 3600);
 
@@ -56,7 +55,6 @@ export async function GET(
     return NextResponse.json({
       order: {
         order_number: order.order_number,
-        customer_name: order.customer_name,
         status: order.status,
         created_at: order.created_at,
         delivered_at: order.delivered_at,

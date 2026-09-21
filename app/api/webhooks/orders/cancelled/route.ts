@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/webhook-verify';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 /**
  * Webhook handler for orders/cancelled
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(rawBody);
     
     // 3. Log webhook
-    await supabaseAdmin.from('webhook_log').insert({
+    await getSupabaseAdmin().from('webhook_log').insert({
       topic: 'orders/cancelled',
       shopify_order_id: payload.id,
       payload,
@@ -32,14 +32,14 @@ export async function POST(request: NextRequest) {
     try {
       await processCancellationWebhook(payload);
       
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('webhook_log')
         .update({ processed: true })
         .eq('shopify_order_id', payload.id)
         .eq('topic', 'orders/cancelled');
 
       // Update last sync timestamp
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('shopify_config')
         .update({ last_sync_at: new Date().toISOString() })
         .not('id', 'is', null);
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.error('Cancellation processing error:', error);
       
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('webhook_log')
         .update({ error: error.message })
         .eq('shopify_order_id', payload.id)
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
 async function processCancellationWebhook(payload: any) {
   // Update order status to cancelled
-  const { data: order, error: fetchError } = await supabaseAdmin
+  const { data: order, error: fetchError } = await getSupabaseAdmin()
     .from('orders')
     .select('id, assigned_rider_id')
     .eq('shopify_order_id', payload.id)
@@ -79,14 +79,14 @@ async function processCancellationWebhook(payload: any) {
   }
 
   // Update order status
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('orders')
     .update({ status: 'cancelled' })
     .eq('shopify_order_id', payload.id);
 
   // Create cancellation event
   if (order.assigned_rider_id) {
-    await supabaseAdmin.from('delivery_events').insert({
+    await getSupabaseAdmin().from('delivery_events').insert({
       id: crypto.randomUUID(),
       order_id: order.id,
       rider_id: order.assigned_rider_id,

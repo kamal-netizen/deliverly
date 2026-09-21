@@ -1,5 +1,5 @@
 import { createShopifyClient } from './shopify';
-import { supabaseAdmin } from './supabase-server';
+import { getSupabaseAdmin } from './supabase-server';
 
 interface FulfillmentResult {
   success: boolean;
@@ -18,7 +18,7 @@ export async function fulfillShopifyOrder(
 ): Promise<FulfillmentResult> {
   try {
     // 1. Check if already fulfilled (idempotency)
-    const { data: order } = await supabaseAdmin
+    const { data: order } = await getSupabaseAdmin()
       .from('orders')
       .select('shopify_fulfillment_id')
       .eq('shopify_order_id', shopifyOrderId)
@@ -70,7 +70,7 @@ export async function fulfillShopifyOrder(
     const fulfillmentId = fulfillmentResponse.fulfillment.id;
 
     // 5. Update order in database
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('orders')
       .update({
         shopify_fulfillment_id: fulfillmentId,
