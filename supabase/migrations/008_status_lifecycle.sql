@@ -54,3 +54,9 @@ CREATE INDEX IF NOT EXISTS idx_orders_awaiting_fulfillment
 -- write path sets it, so require it.
 UPDATE orders SET status = 'pending' WHERE status IS NULL;
 ALTER TABLE orders ALTER COLUMN status SET NOT NULL;
+
+-- PostgREST caches the schema, including foreign keys, and will not notice
+-- anything above until told. Without this, nested selects such as
+-- orders -> delivery_events fail with PGRST200 "Could not find a relationship",
+-- which looks like a missing foreign key rather than a stale cache.
+NOTIFY pgrst, 'reload schema';

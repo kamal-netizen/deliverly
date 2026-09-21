@@ -217,3 +217,9 @@ ALTER FUNCTION public.update_rider_stats()       SECURITY DEFINER;
 -- a caller-controlled schema shadowing the objects it references.
 ALTER FUNCTION public.track_assignment_history() SET search_path = public, pg_temp;
 ALTER FUNCTION public.update_rider_stats()       SET search_path = public, pg_temp;
+
+-- PostgREST caches the schema, including foreign keys, and will not notice
+-- anything above until told. Without this, nested selects such as
+-- orders -> delivery_events fail with PGRST200 "Could not find a relationship",
+-- which looks like a missing foreign key rather than a stale cache.
+NOTIFY pgrst, 'reload schema';

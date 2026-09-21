@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase-client'
 import Link from 'next/link'
 import { 
   LayoutDashboard, 
@@ -21,6 +20,7 @@ import {
   Plug
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import toast from 'react-hot-toast'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -53,7 +53,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Reports'])
   const router = useRouter()
@@ -67,48 +66,14 @@ export default function DashboardLayout({
     )
   }
 
-  useEffect(() => {
-    const supabase = createClient()
-
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/login')
-      } else {
-        setLoading(false)
-      }
-    }
-
-    checkUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.push('/login')
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [router])
-
   const handleLogout = async () => {
     try {
-      await createClient().auth.signOut()
-      alert('Logged out successfully')
+      await fetch('/api/auth/logout', { method: 'POST' })
       router.push('/login')
-    } catch (error) {
-      alert('Failed to logout')
+      router.refresh()
+    } catch {
+      toast.error('Could not sign out')
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
   }
 
   return (

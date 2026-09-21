@@ -44,6 +44,14 @@ export const ROUTE_GUARDS: RouteGuardSpec[] = [
 
   // --- public ---
   {
+    file: 'app/api/auth/logout/route.ts',
+    path: '/api/auth/logout',
+    methods: ['POST'],
+    guard: 'public',
+    reason:
+      'Clears the session. Signing out an already-invalid session should succeed, not 401.',
+  },
+  {
     file: 'app/api/auth/login/route.ts',
     path: '/api/auth/login',
     methods: ['POST'],

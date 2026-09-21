@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin, getSupabaseAnon } from '@/lib/supabase-server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { resolveRole } from '@/lib/auth';
+import { supabaseEnv } from '@/lib/env';
 
 /**
- * Login user (staff or rider)
- * Returns user info with role
+ * Login (staff or rider)
  * POST /api/auth/login
  *
+ * Signs in server-side and sets the session cookies on the response, so the
+ * browser never talks to the auth server directly.
+ *
+ * That is not only tidier, it is required here: the auth service is on a
+ * different origin, and its CORS handler rejects any preflight carrying the
+ * `apikey` header - which supabase-js sends on every call. A browser
+ * signInWithPassword therefore fails before it is sent. Server to server there
+ * is no preflight at all.
+ *
  * Response shape is frozen: the Android rider app may depend on it. Add keys,
- * never rename or remove them.
+ * never rename or remove them. Cookies are additive and a native client
+ * ignores them.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,9 +33,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Anon client, not service role: signing in needs no elevated privilege.
-    const { data: authData, error: authError } =
-      await getSupabaseAnon().auth.signInWithPassword({ email, password });
+    // Collected here and applied to the response below, since the response
+    // does not exist until the payload is known.
+    const pendingCookies: {
+      name: string;
+      value: string;
+      options?: CookieOptions;
+    }[] = [];
+
+    const { url, anonKey } = supabaseEnv();
+
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookies: { name: string; value: string; options?: CookieOptions }[]) {
+          pendingCookies.push(...cookies);
+        },
+      },
+    });
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (authError || !authData.user) {
       return NextResponse.json(
@@ -35,9 +68,9 @@ export async function POST(request: NextRequest) {
 
     const userId = authData.user.id;
 
-    // Read the role from app_metadata (service-role-writable only). It used to
-    // come from user_metadata and default to 'staff', which meant any user
-    // could promote themselves with supabase.auth.updateUser().
+    // Role comes from app_metadata, which only the service role can write. It
+    // used to come from user_metadata and default to 'staff', so any user could
+    // promote themselves with supabase.auth.updateUser().
     const userRole = await resolveRole(authData.user);
 
     if (!userRole) {
@@ -65,7 +98,7 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         user: {
@@ -83,6 +116,12 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+
+    for (const cookie of pendingCookies) {
+      response.cookies.set(cookie.name, cookie.value, cookie.options);
+    }
+
+    return response;
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });

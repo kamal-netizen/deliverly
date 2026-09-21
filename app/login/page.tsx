@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -22,19 +22,26 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Same-origin: the API route signs in server-side and sets the session
+      // cookies. Calling the auth server straight from the browser fails CORS,
+      // because its preflight handler rejects the apikey header supabase-js
+      // always sends.
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       })
 
-      if (error) throw error
+      const result = await response.json().catch(() => null)
 
-      // Redirect to dashboard immediately without alert
+      if (!response.ok) {
+        throw new Error(result?.error || 'Invalid email or password.')
+      }
+
       router.push('/dashboard')
       router.refresh()
     } catch (error: any) {
-      alert(error.message || 'Invalid email or password. Please try again.')
+      toast.error(error.message || 'Invalid email or password. Please try again.')
     } finally {
       setLoading(false)
     }
