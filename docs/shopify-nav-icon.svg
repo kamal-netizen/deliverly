@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Deliverly">
+  <!--
+    Shopify navigation icon: 16x16, one colour, transparent background.
+    Shopify tints this itself, so it carries a single fill and no ground.
+
+    The counter is knocked out with evenodd rather than filled, because a
+    solid blob would not read as a D once Shopify recolours it. Stem, bowl
+    and top are all 3px at this size - any thinner disappears at 16px.
+  -->
+  <path
+    fill="#000000"
+    fill-rule="evenodd"
+    d="M3 2 H7 A6 6 0 0 1 7 14 H3 Z M6 5 H7 A3 3 0 0 1 7 11 H6 Z"
+  />
+</svg>
