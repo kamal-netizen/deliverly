@@ -84,14 +84,14 @@ export async function GET(request: NextRequest) {
       }, {
         onConflict: 'shop_domain'
       })
-      .select();
+      .select('id, shop_domain');
 
     if (dbError) {
       console.error('[OAuth Callback] Database error:', dbError);
       throw dbError;
     }
 
-    console.log('[OAuth Callback] Successfully stored config:', upsertData);
+    console.log('[OAuth Callback] Stored config for', upsertData?.[0]?.shop_domain ?? shop);
 
     // Reconcile rather than blindly register: a reinstall would otherwise
     // stack duplicate webhooks, and a changed WEBHOOK_URL would leave the old

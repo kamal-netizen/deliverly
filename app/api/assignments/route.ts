@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    console.log('Assignment request body:', body);
     const { orderId, riderId } = body;
 
     if (!orderId || !riderId) {

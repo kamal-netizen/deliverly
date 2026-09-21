@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
 import { Order, OrderStatus } from '@/types'
 import {
@@ -28,7 +29,7 @@ function OrdersContent() {
   const [syncing, setSyncing] = useState(false)
   const router = useRouter()
 
-  const { data: ordersData = [], isLoading, refetch } = useQuery({
+  const { data: ordersData = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', statusFilter],
     queryFn: () => 
       apiClient.getOrders(statusFilter !== 'all' ? { status: statusFilter } : undefined),
@@ -118,7 +119,9 @@ function OrdersContent() {
 
       {/* Orders Table */}
       <div className="bg-white rounded-lg border">
-        {isLoading ? (
+        {isError ? (
+          <QueryError error={error} onRetry={() => refetch()} />
+        ) : isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>

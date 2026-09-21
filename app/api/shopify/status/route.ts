@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    console.log('[Status] Checking Shopify connection status...');
     
     const { data, error } = await getSupabaseAdmin()
       .from('shopify_config')
@@ -20,7 +19,6 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    console.log('[Status] Query result:', { data, error });
 
 
     if (error || !data) {

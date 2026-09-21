@@ -1,15 +1,23 @@
 {
   "headers": [
     {
-      "source": "/shopify/:path*",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors https://*.myshopify.com https://admin.shopify.com"
+          "value": "frame-ancestors 'none'"
         },
         {
           "key": "X-Frame-Options",
-          "value": "ALLOWALL"
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
         }
       ]
     }

@@ -44,8 +44,16 @@ export default function SettingsPage() {
   }, [])
 
   const handleConnectShopify = () => {
-    const shopToConnect = newShopDomain || 'q1a5jq-35.myshopify.com'
-    window.location.href = `/api/auth/shopify?shop=${shopToConnect}`
+    const shop = newShopDomain.trim().toLowerCase()
+
+    // Matches the server-side check in lib/shopify.ts. Catching it here
+    // avoids a round-trip that ends in a raw JSON error page.
+    if (!/^[a-z0-9][a-z0-9-]*.myshopify.com$/.test(shop)) {
+      toast.error('Enter a shop domain like your-store.myshopify.com')
+      return
+    }
+
+    window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(shop)}`
   }
 
   const handleDisconnectShopify = async () => {
@@ -136,9 +144,8 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-sm font-medium">Webhook Status</span>
-                <span className="text-sm text-green-600 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Active
+                <span className="text-sm text-gray-500">
+                  Checked on the Shopify tab
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

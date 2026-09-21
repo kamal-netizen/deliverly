@@ -28,6 +28,21 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+/**
+ * Format an amount, or a dash when there is nothing sensible to show.
+ *
+ * line_items is typed `any` and comes straight from Shopify, so a missing
+ * price is entirely possible - and parseFloat(undefined).toFixed(2) renders
+ * the literal string "NaN" to the user.
+ */
+function money(value: unknown, currency: string | null | undefined): string {
+  const amount = parseFloat(String(value ?? ''))
+
+  if (!Number.isFinite(amount)) return '—'
+
+  return `${currency || 'AED'} ${amount.toFixed(2)}`
+}
+
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -156,34 +171,34 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                       </p>
                     </div>
                     <p className="font-medium">
-                      {order.currency || 'AED'} {parseFloat(item.price).toFixed(2)}
+                      {money(item.price, order.currency)}
                     </p>
                   </div>
                 ))}
                 
                 {/* Order Totals */}
                 <div className="space-y-2 pt-3 border-t">
-                  {order.subtotal_price && (
+                  {order.subtotal_price != null && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Subtotal</span>
-                      <span>{order.currency || 'AED'} {parseFloat(String(order.subtotal_price)).toFixed(2)}</span>
+                      <span>{money(order.subtotal_price, order.currency)}</span>
                     </div>
                   )}
                   {order.total_discounts && parseFloat(String(order.total_discounts)) > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discounts</span>
-                      <span>-{order.currency || 'AED'} {parseFloat(String(order.total_discounts)).toFixed(2)}</span>
+                      <span>-{money(order.total_discounts, order.currency)}</span>
                     </div>
                   )}
                   {order.total_tax && parseFloat(String(order.total_tax)) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Tax</span>
-                      <span>{order.currency || 'AED'} {parseFloat(String(order.total_tax)).toFixed(2)}</span>
+                      <span>{money(order.total_tax, order.currency)}</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t font-bold">
                     <span>Total</span>
-                    <span>{order.currency || 'AED'} {parseFloat(String(order.total_price)).toFixed(2)}</span>
+                    <span>{money(order.total_price, order.currency)}</span>
                   </div>
                 </div>
               </div>
@@ -419,28 +434,20 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   </p>
                 </div>
               )}
-              <Button variant="outline" className="w-full" asChild>
-                <a
-                  href={`https://admin.shopify.com/store/orders/${order.shopify_order_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View in Shopify
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                </a>
-              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Assign Rider Modal */}
-      <AssignRiderModal
-        orderId={order.id}
-        currentRiderId={order.assigned_rider_id}
-        open={assignModalOpen}
-        onOpenChange={setAssignModalOpen}
-      />
+      {assignModalOpen && (
+        <AssignRiderModal
+          orderId={order.id}
+          currentRiderId={order.assigned_rider_id}
+          open={assignModalOpen}
+          onOpenChange={setAssignModalOpen}
+        />
+      )}
     </div>
   )
 }

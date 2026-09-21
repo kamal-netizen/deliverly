@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
 import { Rider } from '@/types'
 import {
@@ -24,7 +25,7 @@ function RidersContent() {
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: ridersData = [], isLoading } = useQuery({
+  const { data: ridersData = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['riders'],
     queryFn: () => apiClient.getRiders(),
   })
@@ -68,7 +69,9 @@ function RidersContent() {
 
       {/* Riders Table */}
       <div className="bg-white rounded-lg border">
-        {isLoading ? (
+        {isError ? (
+          <QueryError error={error} onRetry={() => refetch()} />
+        ) : isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
@@ -144,11 +147,13 @@ function RidersContent() {
       </div>
 
       {/* Add/Edit Rider Modal */}
-      <RiderModal
-        rider={selectedRider}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-      />
+      {modalOpen && (
+        <RiderModal
+          rider={selectedRider}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+        />
+      )}
     </div>
   )
 }

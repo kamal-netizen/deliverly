@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 function DashboardContent() {
   const [syncing, setSyncing] = useState(false)
 
-  const { data: ordersData = [], isLoading, refetch: refetchOrders } = useQuery({
+  const { data: ordersData = [], isLoading, isError, error, refetch: refetchOrders } = useQuery({
     queryKey: ['orders'],
     queryFn: () => apiClient.getOrders(),
     refetchInterval: 30000,
@@ -201,7 +202,9 @@ function DashboardContent() {
           </Link>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryError error={error} onRetry={() => refetchOrders()} />
+          ) : isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>

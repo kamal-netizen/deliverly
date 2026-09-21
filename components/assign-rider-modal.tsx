@@ -22,6 +22,13 @@ interface AssignRiderModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+/**
+ * Assign or reassign an order.
+ *
+ * Mount conditionally ({open && <AssignRiderModal … />}): selectedRiderId is
+ * seeded from currentRiderId once, so a permanently-mounted modal keeps the
+ * rider it first saw and preselects the wrong one after a reassignment.
+ */
 export function AssignRiderModal({
   orderId,
   currentRiderId,
@@ -31,8 +38,6 @@ export function AssignRiderModal({
   const [selectedRiderId, setSelectedRiderId] = useState(currentRiderId || '')
   const queryClient = useQueryClient()
 
-  // Debug: Log props when component renders
-  console.log('AssignRiderModal props:', { orderId, currentRiderId, open })
 
   const { data: riders = [], isLoading } = useQuery({
     queryKey: ['riders'],
@@ -44,7 +49,6 @@ export function AssignRiderModal({
       if (!orderId) {
         throw new Error('Order ID is missing')
       }
-      console.log('Assigning - orderId:', orderId, 'riderId:', riderId)
       return apiClient.assignOrder({ orderId, riderId })
     },
     onSuccess: () => {
@@ -61,8 +65,6 @@ export function AssignRiderModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('handleSubmit - orderId from props:', orderId)
-    console.log('handleSubmit - selectedRiderId:', selectedRiderId)
     if (!selectedRiderId) {
       toast.error('Please select a rider')
       return

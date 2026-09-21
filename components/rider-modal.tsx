@@ -23,36 +23,70 @@ interface RiderModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+/**
+ * Create or edit a rider.
+ *
+ * Mount this conditionally ({open && <RiderModal … />}). The form state is
+ * seeded from `rider` once, so a modal that stays mounted across openings keeps
+ * whichever rider it first saw - which is how the edit form used to come up
+ * blank for an existing rider.
+ */
 export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
+  const isEdit = Boolean(rider)
+
   const [formData, setFormData] = useState({
     name: rider?.name || '',
     phone: rider?.phone || '',
     email: rider?.email || '',
+    password: '',
   })
+
   const queryClient = useQueryClient()
 
+  const onSettled = (message: string) => {
+    toast.success(message)
+    queryClient.invalidateQueries({ queryKey: ['riders'] })
+    onOpenChange(false)
+  }
+
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; phone?: string; email?: string }) =>
-      apiClient.createRider(data),
-    onSuccess: () => {
-      toast.success('Rider created successfully')
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
-      onOpenChange(false)
-      setFormData({ name: '', phone: '', email: '' })
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create rider')
-    },
+    mutationFn: (data: {
+      name: string
+      email: string
+      password: string
+      phone?: string
+    }) => apiClient.createRider(data),
+    onSuccess: () => onSettled('Rider created'),
+    onError: (error: any) => toast.error(error.message || 'Could not create rider'),
   })
+
+  // This branch existed in the UI but not in the code: handleSubmit always
+  // called createRider, so saving an edit would have created a duplicate.
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Rider>) => apiClient.updateRider(rider!.id, data),
+    onSuccess: () => onSettled('Rider updated'),
+    onError: (error: any) => toast.error(error.message || 'Could not update rider'),
+  })
+
+  const pending = createMutation.isPending || updateMutation.isPending
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    const payload: any = { name: formData.name }
-    if (formData.phone) payload.phone = formData.phone
-    if (formData.email) payload.email = formData.email
 
-    createMutation.mutate(payload)
+    if (isEdit) {
+      updateMutation.mutate({
+        name: formData.name,
+        phone: formData.phone || null,
+      })
+      return
+    }
+
+    createMutation.mutate({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      ...(formData.phone ? { phone: formData.phone } : {}),
+    })
   }
 
   return (
@@ -60,11 +94,11 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{rider ? 'Edit Rider' : 'Add New Rider'}</DialogTitle>
+            <DialogTitle>{isEdit ? 'Edit Rider' : 'Add New Rider'}</DialogTitle>
             <DialogDescription>
-              {rider
+              {isEdit
                 ? 'Update rider information'
-                : 'Create a new delivery rider'}
+                : 'Creates the rider and their login together, so they can sign in to the rider app.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -74,57 +108,69 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
                 placeholder="John Doe"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="+1234567890"
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+971500000000"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="john@example.com"
-              />
-            </div>
+
+            {!isEdit && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    placeholder="john@example.com"
+                  />
+                  <p className="text-xs text-gray-500">
+                    This is also the rider&apos;s login.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                    minLength={8}
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                onOpenChange(false)
-                setFormData({ name: '', phone: '', email: '' })
-              }}
-              disabled={createMutation.isPending}
+              onClick={() => onOpenChange(false)}
+              disabled={pending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending
-                ? 'Saving...'
-                : rider
-                ? 'Update Rider'
-                : 'Create Rider'}
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Saving…' : isEdit ? 'Update Rider' : 'Create Rider'}
             </Button>
           </DialogFooter>
         </form>

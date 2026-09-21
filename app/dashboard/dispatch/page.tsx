@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
 import { Order, Rider } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +19,7 @@ function DispatchContent() {
   const queryClient = useQueryClient()
 
   // Fetch unassigned orders
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading, isError: ordersError, error: ordersErrorObj, refetch: refetchOrders } = useQuery({
     queryKey: ['orders', 'unassigned'],
     queryFn: async () => {
       const allOrders = await apiClient.getOrders()
@@ -57,7 +58,9 @@ function DispatchContent() {
   }
 
   const unassignedCount = orders.length
-  const availableRidersCount = riders.length
+  // assignments rejects an inactive rider with a 400, so do not offer them.
+  const activeRiders = riders.filter((rider: Rider) => rider.active)
+  const availableRidersCount = activeRiders.length
 
   return (
     <div className="space-y-6">
@@ -105,7 +108,9 @@ function DispatchContent() {
             <CardTitle>Unassigned Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            {ordersLoading ? (
+            {ordersError ? (
+              <QueryError error={ordersErrorObj} onRetry={() => refetchOrders()} />
+            ) : ordersLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               </div>
@@ -164,14 +169,14 @@ function DispatchContent() {
               <div className="flex items-center justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               </div>
-            ) : riders.length === 0 ? (
+            ) : activeRiders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <User className="h-12 w-12 mx-auto mb-2 opacity-20" />
                 <p>No available riders</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {riders.map((rider: Rider) => (
+                {activeRiders.map((rider: Rider) => (
                   <div
                     key={rider.id}
                     className="p-4 border rounded-lg hover:bg-gray-50"
