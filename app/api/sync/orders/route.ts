@@ -4,6 +4,7 @@ import { requireStaff } from '@/lib/auth';
 import { createShopifyClient, getActiveShopifyConfig, markSynced } from '@/lib/shopify';
 import { mapShopifyOrderToRow, initialStatusFor } from '@/lib/shopify-orders';
 import { nanoid } from 'nanoid';
+import { syncInitialDays } from '@/lib/env';
 
 /** Pages of 250. A cap so one request cannot run unbounded. */
 const MAX_PAGES = 20;
@@ -39,8 +40,18 @@ export async function POST(request: NextRequest) {
     // 250 orders and never paged, so a store with more than that silently never
     // imported the rest.
     const params = new URLSearchParams({ status: 'any', limit: '250' });
-    if (!full && config.last_sync_at) {
-      params.set('updated_at_min', config.last_sync_at);
+
+    if (!full) {
+      if (config.last_sync_at) {
+        params.set('updated_at_min', config.last_sync_at);
+      } else {
+        // First run. Without a floor this would try to pull the store's
+        // entire history - 13k+ orders on an established shop - which no
+        // single request can finish. ?full=true is the deliberate backfill.
+        const since = new Date();
+        since.setDate(since.getDate() - syncInitialDays());
+        params.set('created_at_min', since.toISOString());
+      }
     }
 
     let pageInfo: string | null = null;
@@ -70,9 +81,12 @@ export async function POST(request: NextRequest) {
       pageInfo = page.nextPageInfo;
     } while (pageInfo && pages < MAX_PAGES);
 
-    // Only advance the watermark when nothing failed, so a partial sync does
-    // not skip the orders it could not write on the next run.
-    if (failures.length === 0) {
+    const truncated = Boolean(pageInfo);
+
+    // Advance the watermark only on a run that both completed and wrote
+    // everything. Moving it after a truncated run would skip every order
+    // beyond the page cap permanently.
+    if (failures.length === 0 && !truncated) {
       await markSynced(config.id);
     }
 
@@ -85,7 +99,7 @@ export async function POST(request: NextRequest) {
       updated,
       failed: failures.length,
       failures: failures.slice(0, 10),
-      truncated: Boolean(pageInfo),
+      truncated,
     });
   } catch (error: any) {
     console.error('Sync error:', error);

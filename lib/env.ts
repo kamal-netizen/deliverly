@@ -123,3 +123,16 @@ export function dashboardUrl(): string {
 export function merchantTimezone(): string {
   return optionalEnv('MERCHANT_TIMEZONE', 'Asia/Dubai');
 }
+
+/**
+ * How far back the first sync reaches, in days.
+ *
+ * A delivery app cares about orders it might still have to deliver, not the
+ * store's entire history - and an established store can hold tens of thousands
+ * of orders, which no single request should try to import. Use ?full=true for a
+ * deliberate backfill.
+ */
+export function syncInitialDays(): number {
+  const parsed = Number(optionalEnv('SYNC_INITIAL_DAYS', '30'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+}

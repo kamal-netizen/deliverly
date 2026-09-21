@@ -73,7 +73,12 @@ export async function GET(request: NextRequest) {
         access_token,
         scope,
         installed_at: now,
-        last_sync_at: now
+        // Deliberately not set. last_sync_at means "orders are imported up to
+        // here", and at install nothing has been imported. Stamping it with
+        // the install time made the first incremental sync look for orders
+        // updated after install - so an existing store's history silently
+        // never arrived.
+        last_sync_at: null,
       }, {
         onConflict: 'shop_domain'
       })
