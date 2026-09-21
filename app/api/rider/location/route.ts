@@ -31,16 +31,30 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    const { error } = await getSupabaseAdmin()
+    const { data: updated, error } = await getSupabaseAdmin()
       .from('riders')
       .update({
         current_location: { latitude, longitude },
         last_location_update: now,
         is_online: body?.isOnline === false ? false : true,
       })
-      .eq('id', auth.user.id);
+      .eq('id', auth.user.id)
+      .select('id');
 
     if (error) throw error;
+
+    // An update matching no row is not an error here: PostgREST reports success
+    // and changes nothing. Without this check a rider whose row is missing -
+    // deleted, or created before riders.id was linked to auth.uid() - is told
+    // every report succeeded while dispatch shows them as never having
+    // reported, and nothing anywhere says otherwise.
+    if (!updated || updated.length === 0) {
+      console.warn('Rider location: no riders row for auth user ' + auth.user.id);
+      return NextResponse.json(
+        { error: 'No rider record for this account' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true, recordedAt: now }, { status: 200 });
   } catch (error: any) {
