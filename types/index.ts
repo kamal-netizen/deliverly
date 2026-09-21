@@ -18,6 +18,8 @@ export interface Order {
   assigned_rider_id: string | null;
   delivered_at: string | null;
   fulfilled_at: string | null;
+  /** Set once Shopify has fulfilled the order. The fulfillment idempotency key. */
+  shopify_fulfillment_id: number | null;
   created_at: string;
   updated_at: string;
   assigned_at?: string | null;

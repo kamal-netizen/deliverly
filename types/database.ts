@@ -1,3 +1,16 @@
+/**
+ * Hand-maintained mirror of the SQL schema.
+ *
+ * NOT yet bound to the Supabase clients via createClient<Database>(). Binding
+ * it makes every table resolve to never, because satisfying supabase-js's
+ * internal schema constraint takes more than the visible shape below.
+ * Regenerate against the live project instead, then bind:
+ *
+ *   npx supabase gen types typescript --project-id <ref> > types/database.ts
+ *
+ * Until then this file is documentation, and drift is not caught by the
+ * compiler - keep it in step with supabase/migrations/ by hand.
+ */
 export interface Database {
   public: {
     Tables: {
@@ -9,6 +22,7 @@ export interface Database {
           scope: string | null;
           notify_customer_on_fulfill: boolean;
           installed_at: string;
+          last_sync_at: string | null;
         };
         Insert: {
           id?: string;
@@ -17,6 +31,7 @@ export interface Database {
           scope?: string | null;
           notify_customer_on_fulfill?: boolean;
           installed_at?: string;
+          last_sync_at?: string | null;
         };
         Update: {
           id?: string;
@@ -25,6 +40,7 @@ export interface Database {
           scope?: string | null;
           notify_customer_on_fulfill?: boolean;
           installed_at?: string;
+          last_sync_at?: string | null;
         };
       };
       riders: {
@@ -233,6 +249,42 @@ export interface Database {
           created_at?: string;
         };
       };
+      assignment_history: {
+        Row: {
+          id: string;
+          order_id: string;
+          rider_id: string | null;
+          assigned_by: string | null;
+          action: 'assigned' | 'reassigned' | 'unassigned';
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          rider_id?: string | null;
+          assigned_by?: string | null;
+          action: 'assigned' | 'reassigned' | 'unassigned';
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          rider_id?: string | null;
+          assigned_by?: string | null;
+          action?: 'assigned' | 'reassigned' | 'unassigned';
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
     };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: {
+      order_status: 'pending' | 'assigned' | 'delivered' | 'fulfilled' | 'cancelled' | 'failed';
+      event_type: 'assigned' | 'unassigned' | 'reassigned' | 'delivered' | 'failed' | 'cancelled';
+    };
+    CompositeTypes: { [_ in never]: never };
   };
 }
