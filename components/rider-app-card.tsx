@@ -7,18 +7,20 @@ import { Check, Copy, Download, Smartphone } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 /**
- * Where the rider APK is hosted.
+ * Where the rider APK is served from.
  *
- * Deliberately configuration rather than a committed file. The APK is ~25MB,
- * this repository is what Shipyard deploys from, and a binary that size in git
- * is paid for on every clone and every deploy, forever, once per build.
+ * Hosted by this app: the file lives in public/ and is served from the same
+ * origin as the dashboard, so there is nothing to configure and nothing that
+ * can rot. A rider can install it from any network that can reach the
+ * dashboard.
  *
- * GitHub Releases on the rider repository is the natural host, and its "latest"
- * URL is stable, so the dashboard never needs updating when a new build ships:
- *
- *   https://github.com/<owner>/deliverly-rider/releases/latest/download/<file>.apk
+ * The environment variable is an override rather than a requirement. If the
+ * APK later moves to a GitHub release or a CDN - which is the sensible thing
+ * once it outgrows being committed here - set NEXT_PUBLIC_RIDER_APP_URL to its
+ * address and nothing else has to change.
  */
-const APK_URL = process.env.NEXT_PUBLIC_RIDER_APP_URL ?? ''
+const SELF_HOSTED_PATH = '/deliverly-rider.apk'
+const APK_URL = process.env.NEXT_PUBLIC_RIDER_APP_URL || SELF_HOSTED_PATH
 
 /**
  * Getting the app onto a rider's phone.
@@ -35,16 +37,24 @@ export function RiderAppCard() {
   const [copied, setCopied] = useState(false)
 
   const copyLink = async () => {
+    // A relative path is no use in a message, so resolve it against the origin
+    // the dashboard is actually being served from. That also means the link a
+    // rider receives points at whichever host the dispatcher is using, rather
+    // than a domain hardcoded somewhere.
+    const shareable = APK_URL.startsWith('http')
+      ? APK_URL
+      : new URL(APK_URL, window.location.origin).toString()
+
     try {
-      await navigator.clipboard.writeText(APK_URL)
+      await navigator.clipboard.writeText(shareable)
       setCopied(true)
       toast.success('Link copied — send it to your rider')
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Clipboard access is refused outside a secure context, and on a
-      // dashboard served over plain http in development that is the normal
-      // case rather than an error worth a red toast.
-      toast.error('Could not copy. Select the link and copy it manually.')
+      // Clipboard access is refused outside a secure context, which on a
+      // dashboard served over plain http in development is the normal case
+      // rather than a fault. Show the link so it can be copied by hand.
+      toast.error(shareable, { duration: 8000 })
     }
   }
 
@@ -62,47 +72,32 @@ export function RiderAppCard() {
       </CardHeader>
 
       <CardContent>
-        {APK_URL ? (
-          <>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button asChild>
-                <a href={APK_URL} download>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download APK
-                </a>
-              </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild>
+            <a href={APK_URL} download>
+              <Download className="mr-2 h-4 w-4" />
+              Download APK
+            </a>
+          </Button>
 
-              <Button variant="outline" onClick={copyLink}>
-                {copied ? (
-                  <Check className="mr-2 h-4 w-4" />
-                ) : (
-                  <Copy className="mr-2 h-4 w-4" />
-                )}
-                {copied ? 'Copied' : 'Copy link for a rider'}
-              </Button>
-            </div>
+          <Button variant="outline" onClick={copyLink}>
+            {copied ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            {copied ? 'Copied' : 'Copy link for a rider'}
+          </Button>
+        </div>
 
-            {/* Worth saying once, here, rather than fielding it by phone. The
-                app is not on the Play Store, so Android will warn. */}
-            <p className="mt-4 text-sm text-gray-500">
-              The app is installed directly rather than from the Play Store, so
-              Android asks the rider to allow installs from this source the first
-              time. That prompt is expected.
-            </p>
-          </>
-        ) : (
-          <div className="rounded-lg border border-dashed p-4">
-            <p className="text-sm font-medium">No download link configured yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Host the APK — a GitHub release on the rider repository is the
-              simplest option — then set{' '}
-              <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">
-                NEXT_PUBLIC_RIDER_APP_URL
-              </code>{' '}
-              to its address and redeploy. The link appears here once it is set.
-            </p>
-          </div>
-        )}
+        {/* Worth saying once, here, rather than fielding it by phone from a
+            rider standing in a car park. The app is not on the Play Store, so
+            Android warns before installing it. */}
+        <p className="mt-4 text-sm text-gray-500">
+          The app is installed directly rather than from the Play Store, so
+          Android asks the rider to allow installs from this source the first
+          time. That prompt is expected.
+        </p>
       </CardContent>
     </Card>
   )
