@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RiderModal } from '@/components/rider-modal'
+import { RiderAppCard } from '@/components/rider-app-card'
 import { UserPlus, Phone, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -66,6 +67,10 @@ function RidersContent() {
           Add Rider
         </Button>
       </div>
+
+      {/* Adding a rider and getting them the app are one task, so they sit
+          together rather than the app link living off in settings. */}
+      <RiderAppCard />
 
       {/* Riders Table */}
       <div className="bg-white rounded-lg border">
