@@ -20,6 +20,9 @@ export interface Order {
   fulfilled_at: string | null;
   /** Set once Shopify has fulfilled the order. The fulfillment idempotency key. */
   shopify_fulfillment_id: number | null;
+  /** Set when staff close an order completed outside this system and outside Shopify. */
+  closed_at?: string | null;
+  closed_reason?: string | null;
   created_at: string;
   updated_at: string;
   assigned_at?: string | null;

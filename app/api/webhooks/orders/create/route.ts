@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/webhook-verify';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { getActiveShopifyConfig, markSynced } from '@/lib/shopify';
+import { getActiveShopifyConfig, markWebhookSeen } from '@/lib/shopify';
 import { mapShopifyOrderToRow, initialStatusFor } from '@/lib/shopify-orders';
 import { shopifyEnv } from '@/lib/env';
 import { nanoid } from 'nanoid';
@@ -102,7 +102,7 @@ async function processOrderWebhook(payload: any) {
   }
 
   if (config) {
-    await markSynced(config.id);
+    await markWebhookSeen(config.id);
   }
 
   console.log(`Order ${payload.name} (${payload.id}) created`);

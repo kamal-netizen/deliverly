@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     
     const { data, error } = await getSupabaseAdmin()
       .from('shopify_config')
-      .select('shop_domain, installed_at, last_sync_at')
+      .select('shop_domain, installed_at, last_sync_at, last_webhook_at')
       .order('installed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -34,7 +34,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       connected: true,
       shopDomain: data.shop_domain,
-      lastSync: data.last_sync_at || data.installed_at
+      // The reconciliation cursor: everything up to here has been fetched from
+      // Shopify. Only a completed sync moves it.
+      lastSync: data.last_sync_at || data.installed_at,
+      // Liveness, reported separately. Webhooks used to write lastSync to keep
+      // this panel looking healthy, which corrupted the cursor and left the
+      // app permanently blind to fulfilments on existing orders. Two facts,
+      // two fields.
+      lastWebhook: data.last_webhook_at ?? null
     });
 
   } catch (error: any) {

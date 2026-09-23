@@ -55,6 +55,33 @@ export async function markSynced(configId: string): Promise<void> {
   }
 }
 
+/**
+ * Record that Shopify called us. Liveness only.
+ *
+ * Emphatically not markSynced. last_sync_at is the incremental cursor sent to
+ * Shopify as `updated_at_min`, and every webhook handler used to write it - so
+ * a single orders/create, which reconciles one order and knows nothing about
+ * any other, pushed the cursor to now() and the next real sync asked only for
+ * changes after that webhook.
+ *
+ * Everything fulfilled earlier fell outside the window and was never requested
+ * again. New orders kept arriving, so the integration looked healthy while
+ * silently never learning that an existing order had been fulfilled.
+ *
+ * If you need the settings page to show recent activity, show this. Never feed
+ * it to a sync.
+ */
+export async function markWebhookSeen(configId: string): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from('shopify_config')
+    .update({ last_webhook_at: new Date().toISOString() })
+    .eq('id', configId);
+
+  if (error) {
+    console.error('Could not update last_webhook_at:', error);
+  }
+}
+
 export class ShopifyApiError extends Error {
   readonly status: number;
   readonly body: string;

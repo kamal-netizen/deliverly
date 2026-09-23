@@ -1,8 +1,19 @@
 import { ShopifyAPI } from './shopify';
 import { webhookBaseUrl } from './env';
 
-/** The only webhook topics this app owns. */
-export const OUR_TOPICS = ['orders/create', 'orders/cancelled'] as const;
+/**
+ * The only webhook topics this app owns.
+ *
+ * orders/fulfilled is here because orders finished by anyone else were
+ * invisible: with only create and cancelled subscribed, an order handed to
+ * another courier and fulfilled in Shopify sat in the dispatch queue as
+ * pending work until somebody noticed by hand.
+ */
+export const OUR_TOPICS = [
+  'orders/create',
+  'orders/cancelled',
+  'orders/fulfilled',
+] as const;
 
 export type OurTopic = (typeof OUR_TOPICS)[number];
 

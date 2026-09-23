@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select('assigned_rider_id')
       .eq('status', 'assigned')
+      // Same rule as the dispatch queue and the rider's own stop list: an
+      // order somebody else fulfilled is not this rider's workload, even
+      // though its status still says assigned.
+      .is('shopify_fulfillment_id', null)
+      .is('closed_at', null)
       .not('assigned_rider_id', 'is', null);
 
     if (assignmentError) throw assignmentError;

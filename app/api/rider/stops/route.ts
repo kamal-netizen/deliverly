@@ -38,11 +38,24 @@ export async function GET(request: NextRequest) {
     // "assigned regardless of age, OR delivered within the window" in a single
     // readable filter, and an unbounded read is what we are fixing.
     const [active, recent] = await Promise.all([
+      // Still assigned, and still actually ours to deliver.
+      //
+      // `status` alone was not enough. An order fulfilled in Shopify by someone
+      // else - another courier, a counter collection - keeps status 'assigned'
+      // forever, because nothing in this system ever happened to it. The rider
+      // kept seeing the stop on their phone and would have driven to a door
+      // where the parcel had already been delivered.
+      //
+      // Deliberately only on this query. The `recent` half below lists work the
+      // rider has completed, and our own fulfilment sets shopify_fulfillment_id
+      // too - filtering there would empty their done-today list.
       admin
         .from('orders')
         .select(select)
         .eq('assigned_rider_id', riderId)
         .eq('status', 'assigned')
+        .is('shopify_fulfillment_id', null)
+        .is('closed_at', null)
         .order('created_at', { ascending: false }),
 
       admin

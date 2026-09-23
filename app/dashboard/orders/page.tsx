@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
+import { isOutstanding } from '@/lib/delivery'
 import { Order, OrderStatus } from '@/types'
 import {
   Table,
@@ -28,6 +29,28 @@ function OrdersContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [syncing, setSyncing] = useState(false)
   const router = useRouter()
+
+  const queryClient = useQueryClient()
+
+  // Closing is for orders finished outside this system that Shopify was never
+  // told about either. Nothing can infer those, so a person says so.
+  const closeMutation = useMutation({
+    mutationFn: (id: string) => apiClient.closeOrder(id),
+    onSuccess: () => {
+      toast.success('Closed as handled elsewhere')
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+    onError: (e: any) => toast.error(e.message || 'Could not close the order'),
+  })
+
+  const reopenMutation = useMutation({
+    mutationFn: (id: string) => apiClient.reopenOrder(id),
+    onSuccess: () => {
+      toast.success('Reopened')
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+    onError: (e: any) => toast.error(e.message || 'Could not reopen the order'),
+  })
 
   const { data: ordersData = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', statusFilter],
@@ -157,7 +180,11 @@ function OrdersContent() {
                   <TableCell>{order.customer_name || '-'}</TableCell>
                   <TableCell>{order.customer_phone || '-'}</TableCell>
                   <TableCell>
-                    <StatusBadge status={order.status} />
+                    <StatusBadge
+                      status={order.status}
+                      shopifyFulfillmentId={order.shopify_fulfillment_id}
+                      closedAt={order.closed_at}
+                    />
                   </TableCell>
                   <TableCell>
                     {order.riders?.name || (
@@ -171,11 +198,41 @@ function OrdersContent() {
                     }
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Link href={`/dashboard/orders/${order.id}`}>
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-1">
+                      <Link href={`/dashboard/orders/${order.id}`}>
+                        <Button variant="ghost" size="sm">
+                          View
+                        </Button>
+                      </Link>
+
+                      {/* Only for orders still counted as work. An order
+                          Shopify already reports fulfilled needs no closing;
+                          this is for the ones nobody recorded anywhere. */}
+                      {isOutstanding(order) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-500"
+                          disabled={closeMutation.isPending}
+                          onClick={() => closeMutation.mutate(order.id)}
+                          title="Completed outside Deliverly"
+                        >
+                          Close
+                        </Button>
+                      )}
+
+                      {order.closed_at && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-500"
+                          disabled={reopenMutation.isPending}
+                          onClick={() => reopenMutation.mutate(order.id)}
+                        >
+                          Reopen
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

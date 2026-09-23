@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { OrderStatus } from '@/types'
+import { closedBecause } from '@/lib/delivery'
 
 // fulfilled is deliberately absent: status is the delivery lifecycle, and
 // "fulfilled in Shopify" is shopify_fulfillment_id being set. See migration 008.
@@ -31,9 +32,43 @@ const statusConfig: Record<Exclude<OrderStatus, 'fulfilled'>, { label: string; v
   },
 }
 
-export function StatusBadge({ status }: { status: OrderStatus }) {
+/**
+ * The delivery status, unless something else finished the order first.
+ *
+ * An order fulfilled by another courier keeps `status = 'pending'` forever,
+ * because nothing in this system ever happened to it. Showing that as "Pending"
+ * is how a list of finished work came to look like a backlog. The extra fields
+ * are optional so existing call sites that only have a status still work; they
+ * simply cannot make that distinction.
+ */
+export function StatusBadge({
+  status,
+  shopifyFulfillmentId = null,
+  closedAt = null,
+}: {
+  status: OrderStatus
+  shopifyFulfillmentId?: number | null
+  closedAt?: string | null
+}) {
+  const elsewhere = closedBecause({
+    status,
+    shopify_fulfillment_id: shopifyFulfillmentId,
+    closed_at: closedAt,
+  })
+
+  if (elsewhere) {
+    return (
+      <Badge
+        variant="secondary"
+        className="bg-slate-100 text-slate-700 hover:bg-slate-100"
+      >
+        {elsewhere}
+      </Badge>
+    )
+  }
+
   const config = statusConfig[status as Exclude<OrderStatus, 'fulfilled'>]
-  
+
   // Handle invalid or undefined status
   if (!config) {
     return (

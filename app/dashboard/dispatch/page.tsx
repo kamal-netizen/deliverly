@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { QueryError } from '@/components/query-error'
 import { apiClient } from '@/lib/api-client'
+import { isOutstanding } from '@/lib/delivery'
 import { Order, Rider } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +25,10 @@ function DispatchContent() {
     queryFn: async () => {
       const allOrders = await apiClient.getOrders()
       return Array.isArray(allOrders) 
-        ? allOrders.filter((order: Order) => order.status === 'pending')
+        // isOutstanding, not `status === 'pending'`. An order another
+        // courier already fulfilled keeps its pending status forever, and
+        // sat in this queue as work nobody would ever do.
+        ? allOrders.filter((order: Order) => isOutstanding(order))
         : []
     },
     refetchInterval: 5000, // Refresh every 5 seconds

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/webhook-verify';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { getActiveShopifyConfig, markSynced } from '@/lib/shopify';
+import { getActiveShopifyConfig, markWebhookSeen } from '@/lib/shopify';
 import { shopifyEnv } from '@/lib/env';
 
 /**
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
       const config = await getActiveShopifyConfig();
       if (config) {
-        await markSynced(config.id);
+        await markWebhookSeen(config.id);
       }
 
       return NextResponse.json({ success: true }, { status: 200 });

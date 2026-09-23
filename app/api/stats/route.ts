@@ -78,6 +78,17 @@ export async function GET(request: NextRequest) {
         .gte('created_at', since);
 
       if (status) q = q.eq('status', status);
+
+      // "Pending" and "assigned" mean work still to do, and an order somebody
+      // else already fulfilled is not that. Its status stays pending forever -
+      // nothing in this system ever happened to it - so counting on status
+      // alone reported a backlog that did not exist. Matches isOutstanding in
+      // lib/delivery.ts; the dispatch queue and this counter have to agree or
+      // the dashboard contradicts itself.
+      if (status === 'pending' || status === 'assigned') {
+        q = q.is('shopify_fulfillment_id', null).is('closed_at', null);
+      }
+
       return q;
     };
 
