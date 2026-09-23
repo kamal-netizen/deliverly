@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface RiderModalProps {
@@ -22,6 +23,9 @@ interface RiderModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
+
+/** Matches the floor the API enforces; checked here to save a round trip. */
+const MIN_PASSWORD = 8
 
 /**
  * Create or edit a rider.
@@ -40,6 +44,8 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
     email: rider?.email || '',
     password: '',
   })
+
+  const [newPassword, setNewPassword] = useState('')
 
   const queryClient = useQueryClient()
 
@@ -68,6 +74,20 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
     onError: (error: any) => toast.error(error.message || 'Could not update rider'),
   })
 
+  const resetMutation = useMutation({
+    mutationFn: (password: string) =>
+      apiClient.resetRiderPassword(rider!.id, password),
+    onSuccess: () => {
+      // The dialog stays open on purpose. The dispatcher has just chosen a
+      // password they now have to pass on to the rider, and closing the thing
+      // out from under them is how it gets forgotten before it is written down.
+      setNewPassword('')
+      toast.success('Password set. Give it to the rider — it cannot be read back.')
+    },
+    onError: (error: any) =>
+      toast.error(error.message || 'Could not reset the password'),
+  })
+
   const pending = createMutation.isPending || updateMutation.isPending
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,6 +97,7 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
       updateMutation.mutate({
         name: formData.name,
         phone: formData.phone || null,
+        email: formData.email,
       })
       return
     }
@@ -94,10 +115,10 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Edit Rider' : 'Add New Rider'}</DialogTitle>
+            <DialogTitle>{isEdit ? 'Edit rider' : 'Add new rider'}</DialogTitle>
             <DialogDescription>
               {isEdit
-                ? 'Update rider information'
+                ? 'Changing the email changes the address this rider signs in with.'
                 : 'Creates the rider and their login together, so they can sign in to the rider app.'}
             </DialogDescription>
           </DialogHeader>
@@ -125,38 +146,36 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
               />
             </div>
 
-            {!isEdit && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    placeholder="john@example.com"
-                  />
-                  <p className="text-xs text-gray-500">
-                    This is also the rider&apos;s login.
-                  </p>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                placeholder="john@example.com"
+              />
+              <p className="text-xs text-gray-500">
+                This is also the rider&apos;s login.
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    required
-                    minLength={8}
-                    placeholder="At least 8 characters"
-                  />
-                </div>
-              </>
+            {!isEdit && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  required
+                  minLength={MIN_PASSWORD}
+                  placeholder={`At least ${MIN_PASSWORD} characters`}
+                />
+              </div>
             )}
           </div>
 
@@ -170,10 +189,53 @@ export function RiderModal({ rider, open, onOpenChange }: RiderModalProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Saving…' : isEdit ? 'Update Rider' : 'Create Rider'}
+              {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create rider'}
             </Button>
           </DialogFooter>
         </form>
+
+        {/*
+          Outside the form, and below the footer, deliberately.
+
+          Setting someone's password is a different act from correcting their
+          phone number, so it gets its own button and its own confirmation
+          rather than riding along on "Save changes" - where a dispatcher
+          editing a phone number could set a password without meaning to.
+        */}
+        {isEdit && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-gray-500" />
+              <p className="text-sm font-medium">Reset password</p>
+            </div>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Sets a new password immediately. The rider is not told — pass it on
+              yourself, and note it down first, because it cannot be read back.
+            </p>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={MIN_PASSWORD}
+                placeholder={`New password, at least ${MIN_PASSWORD} characters`}
+                aria-label="New password"
+                className="sm:flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={newPassword.length < MIN_PASSWORD || resetMutation.isPending}
+                onClick={() => resetMutation.mutate(newPassword)}
+              >
+                {resetMutation.isPending ? 'Setting…' : 'Set password'}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

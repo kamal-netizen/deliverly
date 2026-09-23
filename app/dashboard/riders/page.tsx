@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RiderModal } from '@/components/rider-modal'
 import { RiderAppCard } from '@/components/rider-app-card'
-import { UserPlus, Phone, Mail } from 'lucide-react'
+import { UserPlus, Phone, Mail, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ErrorBoundary } from '@/components/error-boundary'
 
@@ -52,6 +52,13 @@ function RidersContent() {
 
   const handleAddRider = () => {
     setSelectedRider(null)
+    setModalOpen(true)
+  }
+
+  // The modal has supported editing all along - nothing ever handed it a
+  // rider, so the edit half was unreachable from the table.
+  const handleEditRider = (rider: Rider) => {
+    setSelectedRider(rider)
     setModalOpen(true)
   }
 
@@ -134,6 +141,15 @@ function RidersContent() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditRider(rider)}
+                      >
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+
                       <Button
                         variant={rider.active ? 'outline' : 'default'}
                         size="sm"

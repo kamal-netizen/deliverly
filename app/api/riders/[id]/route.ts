@@ -17,9 +17,11 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    const admin = getSupabaseAdmin();
+
     // Only allow updating specific fields
     const allowedFields = ['name', 'phone', 'email', 'active'];
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
       if (field in body) {
@@ -35,7 +37,77 @@ export async function PATCH(
       return response;
     }
 
-    const { data: rider, error } = await getSupabaseAdmin()
+    if ('name' in updates) {
+      if (typeof updates.name !== 'string' || !updates.name.trim()) {
+        return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+      }
+      updates.name = updates.name.trim();
+    }
+
+    if ('email' in updates) {
+      const email = updates.email;
+
+      if (typeof email !== 'string' || !email.includes('@')) {
+        return NextResponse.json({ error: 'Valid email required' }, { status: 400 });
+      }
+
+      const trimmed = email.trim();
+
+      // Only touch auth when the address has actually changed.
+      //
+      // The edit form posts every field, so saving an unrelated phone-number
+      // correction would otherwise re-send the same address to the auth server.
+      // Depending on the project's settings that starts an email-change
+      // confirmation and mails the rider about something nobody changed.
+      const { data: current } = await admin
+        .from('riders')
+        .select('email')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (current?.email === trimmed) {
+        delete updates.email;
+      } else {
+        // The email is the rider's login. It lives in auth.users as well as in
+        // this table, and this route only ever wrote the table - so changing it
+        // produced a rider whose listed address no longer signed them in, with
+        // nothing anywhere saying the two had diverged.
+        //
+        // Auth goes first deliberately. If it refuses - the address is already
+        // taken, say - this table is left untouched rather than left
+        // disagreeing with the thing that actually authenticates.
+        const { error: authError } = await admin.auth.admin.updateUserById(id, {
+          email: trimmed,
+        });
+
+        if (authError) {
+          return NextResponse.json(
+            { error: authError.message || 'Could not update the login email' },
+            { status: 400 }
+          );
+        }
+
+        updates.email = trimmed;
+      }
+    }
+
+    // Dropping an unchanged email can leave nothing left to write. Saving a
+    // form without altering anything is a successful no-op, not a bad request.
+    if (Object.keys(updates).length === 0) {
+      const { data: unchanged } = await admin
+        .from('riders')
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!unchanged) {
+        return NextResponse.json({ error: 'Rider not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ rider: unchanged }, { status: 200 });
+    }
+
+    const { data: rider, error } = await admin
       .from('riders')
       .update(updates)
       .eq('id', id)
@@ -79,7 +151,11 @@ export async function DELETE(
       .from('orders')
       .select('id')
       .eq('assigned_rider_id', id)
-      .in('status', ['assigned', 'pending']);
+      .in('status', ['assigned', 'pending'])
+      // An order fulfilled elsewhere is not an active assignment; without this
+      // it blocks deleting the rider forever.
+      .is('shopify_fulfillment_id', null)
+      .is('closed_at', null);
 
     if (ordersError) {
       throw ordersError;

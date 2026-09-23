@@ -46,6 +46,26 @@ class ApiClient {
   // Orders
   // Errors propagate so React Query can set isError. Returning [] here used to
   // make a 500 render as "No orders found".
+  /**
+   * Close an order that was completed outside this system.
+   *
+   * For orders no sync can ever resolve, because Shopify was never told they
+   * were finished either.
+   */
+  async closeOrder(id: string, reason?: string): Promise<void> {
+    await this.request<{ order: Order }>(`/orders/${id}/close`, {
+      method: 'POST',
+      body: JSON.stringify(reason ? { reason } : {}),
+    })
+  }
+
+  /** Undo a close. The judgement behind one is often made on partial facts. */
+  async reopenOrder(id: string): Promise<void> {
+    await this.request<{ order: Order }>(`/orders/${id}/close`, {
+      method: 'DELETE',
+    })
+  }
+
   async getOrders(params?: { status?: string; rider_id?: string }): Promise<Order[]> {
     const query = new URLSearchParams(params as any).toString()
     const result = await this.request<{ orders: Order[] } | Order[]>(
@@ -91,6 +111,20 @@ class ApiClient {
     return this.request<Rider>(`/riders/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    })
+  }
+
+  /**
+   * Set a new password for a rider.
+   *
+   * Its own call rather than a field on updateRider, matching the route: the
+   * password never travels alongside a phone-number edit, and a caller cannot
+   * change one by accident while meaning to change the other.
+   */
+  async resetRiderPassword(id: string, password: string): Promise<void> {
+    await this.request<{ success: boolean }>(`/riders/${id}/password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
     })
   }
 
